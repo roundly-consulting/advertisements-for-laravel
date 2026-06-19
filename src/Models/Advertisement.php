@@ -368,6 +368,40 @@ class Advertisement extends Model
         return static::query()->where('expires_at', '<=', now());
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Resolve slug bindings against the active locale's slug, then the fallback
+     * locale's, since slugs are per-locale JSON maps.
+     *
+     * @param  string  $value
+     * @param  string|null  $field
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        $field ??= $this->getRouteKeyName();
+
+        if ($field !== 'slug') {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        $locale = app()->getLocale();
+
+        /** @var string $fallback */
+        $fallback = config('advertisements.fallback_locale', $locale);
+
+        return static::query()
+            ->where('slug->'.$locale, $value)
+            ->when(
+                $locale !== $fallback,
+                fn (Builder $query): Builder => $query->orWhere('slug->'.$fallback, $value),
+            )
+            ->first();
+    }
+
     /**
      * Generate the current locale's slug from that locale's name (or the resolved
      * name fallback) when the name changed or the slug is missing. Other locales'
