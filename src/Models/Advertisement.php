@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -18,6 +19,7 @@ use Illuminate\Support\Str;
 use RoundlyConsulting\Advertisements\Casts\MoneyCast;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
+use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 /**
@@ -45,6 +47,7 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @method static Builder<static> draft()
  * @method static Builder<static> archived()
  * @method static Builder<static> forAuthor(Model $author)
+ * @method static Builder<static> forPlacement(Placement|int|string $placement)
  */
 class Advertisement extends Model
 {
@@ -81,6 +84,14 @@ class Advertisement extends Model
     public function author(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /** @return BelongsToMany<Placement, $this> */
+    public function placements(): BelongsToMany
+    {
+        return $this->belongsToMany(Placement::class)
+            ->withPivot('meta')
+            ->withTimestamps();
     }
 
     /**
@@ -163,6 +174,20 @@ class Advertisement extends Model
     {
         $query->where('author_type', $author->getMorphClass())
             ->where('author_id', $author->getKey());
+    }
+
+    /**
+     * Constrain to ads attached to the given placement (model, id, or slug).
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeForPlacement(Builder $query, Placement|int|string $placement): void
+    {
+        $key = app(PlacementResolver::class)->resolveKey($placement);
+
+        $query->whereHas('placements', function (Builder $query) use ($key): void {
+            $query->whereKey($key);
+        });
     }
 
     /** @return Builder<static> */

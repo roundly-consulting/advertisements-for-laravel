@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Placement;
 
 return [
 
@@ -17,6 +18,30 @@ return [
     */
 
     'model' => Advertisement::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Placement Model
+    |--------------------------------------------------------------------------
+    |
+    | The Eloquent model used to store placements (zones where an ad renders).
+    | Override with your own class extending the package model.
+    |
+    */
+
+    'placement_model' => Placement::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback Locale
+    |--------------------------------------------------------------------------
+    |
+    | Locale used when the active locale has no translation for a translatable
+    | attribute (name, description, slug). Defaults to the app fallback locale.
+    |
+    */
+
+    'fallback_locale' => env('ADVERTISEMENTS_FALLBACK_LOCALE', config('app.fallback_locale', 'en')),
 
     /*
     |--------------------------------------------------------------------------

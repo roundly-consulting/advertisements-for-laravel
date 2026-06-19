@@ -7,14 +7,18 @@ namespace RoundlyConsulting\Advertisements;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\AttachPlacements;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\DetachPlacements;
 use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\SyncPlacements;
 use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UpdateAdvertisement;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Placement;
 
 /**
  * Expressive entry point over the advertisement action classes. The actions
@@ -80,5 +84,40 @@ final class AdvertisementManager
         $model = config('advertisements.model', Advertisement::class);
 
         return $model::query();
+    }
+
+    /**
+     * The active ads available in the given placement: the common "what's live in
+     * this zone" query, in one call.
+     *
+     * @return Builder<Advertisement>
+     */
+    public function for(Placement|int|string $placement): Builder
+    {
+        return $this->query()->active()->forPlacement($placement);
+    }
+
+    /**
+     * @param  iterable<int, Placement|int|string>  $placements
+     */
+    public function attachPlacements(Advertisement $advertisement, iterable $placements): Advertisement
+    {
+        return app(AttachPlacements::class)->execute($advertisement, $placements);
+    }
+
+    /**
+     * @param  iterable<int, Placement|int|string>  $placements
+     */
+    public function detachPlacements(Advertisement $advertisement, iterable $placements): Advertisement
+    {
+        return app(DetachPlacements::class)->execute($advertisement, $placements);
+    }
+
+    /**
+     * @param  iterable<int, Placement|int|string>  $placements
+     */
+    public function syncPlacements(Advertisement $advertisement, iterable $placements): Advertisement
+    {
+        return app(SyncPlacements::class)->execute($advertisement, $placements);
     }
 }
