@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use RoundlyConsulting\Advertisements\Casts\MoneyCast;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
+use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 /**
@@ -28,11 +31,20 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @property ?Money $price
  * @property ?string $currency
  * @property ?Collection<array-key, mixed> $meta
- * @property ?Carbon $published_at
- * @property ?Carbon $expires_at
+ * @property AdvertisementStatus $status
+ * @property ?CarbonInterface $published_at
+ * @property ?CarbonInterface $expires_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property ?Carbon $deleted_at
+ *
+ * @method static Builder<static> published()
+ * @method static Builder<static> active()
+ * @method static Builder<static> scheduled()
+ * @method static Builder<static> expired()
+ * @method static Builder<static> draft()
+ * @method static Builder<static> archived()
+ * @method static Builder<static> forAuthor(Model $author)
  */
 class Advertisement extends Model
 {
@@ -69,6 +81,88 @@ class Advertisement extends Model
     public function author(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Effective lifecycle status: the stored `status` column, with time-based
+     * expiry overlaid so a live ad past its `expires_at` reads as Expired.
+     *
+     * @return Attribute<AdvertisementStatus, never>
+     */
+    protected function status(): Attribute
+    {
+        return Attribute::get(fn (mixed $value): AdvertisementStatus => $this->resolveStatus($value));
+    }
+
+    /**
+     * Reconcile the stored status column with time-based expiry/scheduling.
+     */
+    private function resolveStatus(mixed $value): AdvertisementStatus
+    {
+        $stored = $value instanceof AdvertisementStatus
+            ? $value
+            : AdvertisementStatus::from((string) ($value ?? AdvertisementStatus::Draft->value));
+
+        return match (true) {
+            $stored === AdvertisementStatus::Archived => AdvertisementStatus::Archived,
+            $this->expires_at !== null && $this->expires_at->lessThanOrEqualTo(now()) => AdvertisementStatus::Expired,
+            $this->published_at !== null && $this->published_at->isFuture() => AdvertisementStatus::Scheduled,
+            $this->published_at !== null => AdvertisementStatus::Published,
+            default => AdvertisementStatus::Draft,
+        };
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopePublished(Builder $query): void
+    {
+        $query->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->where('status', '!=', AdvertisementStatus::Archived->value);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeActive(Builder $query): void
+    {
+        $query->published()
+            ->where(function (Builder $query): void {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeScheduled(Builder $query): void
+    {
+        $query->whereNotNull('published_at')
+            ->where('published_at', '>', now())
+            ->where('status', '!=', AdvertisementStatus::Archived->value);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeExpired(Builder $query): void
+    {
+        $query->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->where('status', '!=', AdvertisementStatus::Archived->value);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeDraft(Builder $query): void
+    {
+        $query->whereNull('published_at')
+            ->where('status', '!=', AdvertisementStatus::Archived->value);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeArchived(Builder $query): void
+    {
+        $query->where('status', AdvertisementStatus::Archived->value);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeForAuthor(Builder $query, Model $author): void
+    {
+        $query->where('author_type', $author->getMorphClass())
+            ->where('author_id', $author->getKey());
     }
 
     /** @return Builder<static> */

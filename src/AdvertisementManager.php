@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UpdateAdvertisement;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
@@ -20,6 +26,11 @@ final class AdvertisementManager
     public function __construct(
         private readonly CreateAdvertisement $create,
         private readonly UpdateAdvertisement $update,
+        private readonly PublishAdvertisement $publish,
+        private readonly UnpublishAdvertisement $unpublish,
+        private readonly ExpireAdvertisement $expire,
+        private readonly ArchiveAdvertisement $archive,
+        private readonly DeleteAdvertisement $delete,
     ) {}
 
     public function create(AdvertisementData $data): Advertisement
@@ -30,6 +41,31 @@ final class AdvertisementManager
     public function update(Advertisement $advertisement, AdvertisementData $data): Advertisement
     {
         return $this->update->execute($advertisement, $data);
+    }
+
+    public function publish(Advertisement $advertisement, ?CarbonInterface $at = null): Advertisement
+    {
+        return $this->publish->execute($advertisement, $at);
+    }
+
+    public function unpublish(Advertisement $advertisement): Advertisement
+    {
+        return $this->unpublish->execute($advertisement);
+    }
+
+    public function expire(Advertisement $advertisement, ?CarbonInterface $at = null): Advertisement
+    {
+        return $this->expire->execute($advertisement, $at);
+    }
+
+    public function archive(Advertisement $advertisement): Advertisement
+    {
+        return $this->archive->execute($advertisement);
+    }
+
+    public function delete(Advertisement $advertisement): bool
+    {
+        return $this->delete->execute($advertisement);
     }
 
     /**

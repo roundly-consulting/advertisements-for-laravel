@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Advertisements\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
@@ -21,6 +22,7 @@ final class AdvertisementFactory extends Factory
             'category' => fake()->word(),
             'description' => fake()->sentence(),
             'price' => new Money(fake()->numberBetween(100, 10000), 'EUR'),
+            'status' => AdvertisementStatus::Draft->value,
         ];
     }
 
@@ -28,13 +30,31 @@ final class AdvertisementFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'published_at' => now()->subDay(),
+            'status' => AdvertisementStatus::Published->value,
+        ]);
+    }
+
+    public function scheduled(): self
+    {
+        return $this->state(fn (array $attributes): array => [
+            'published_at' => now()->addDay(),
+            'status' => AdvertisementStatus::Scheduled->value,
         ]);
     }
 
     public function expired(): self
     {
         return $this->state(fn (array $attributes): array => [
+            'published_at' => now()->subDays(2),
             'expires_at' => now()->subDay(),
+            'status' => AdvertisementStatus::Published->value,
+        ]);
+    }
+
+    public function archived(): self
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => AdvertisementStatus::Archived->value,
         ]);
     }
 }
