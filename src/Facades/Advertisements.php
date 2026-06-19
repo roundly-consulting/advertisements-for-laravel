@@ -24,6 +24,8 @@ use RoundlyConsulting\Advertisements\Models\Placement;
  * @method static Advertisement archive(Advertisement $advertisement)
  * @method static bool delete(Advertisement $advertisement)
  * @method static Builder<Advertisement> query()
+ * @method static Builder<Advertisement> active()
+ * @method static ?Advertisement random(Placement|int|string|null $placement = null)
  * @method static Builder<Advertisement> for(Placement|int|string $placement)
  * @method static Advertisement attachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
  * @method static Advertisement detachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)

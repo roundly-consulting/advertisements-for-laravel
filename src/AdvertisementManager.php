@@ -92,6 +92,16 @@ final class AdvertisementManager
     }
 
     /**
+     * A query already constrained to active ads.
+     *
+     * @return Builder<Advertisement>
+     */
+    public function active(): Builder
+    {
+        return $this->query()->active();
+    }
+
+    /**
      * The active ads available in the given placement: the common "what's live in
      * this zone" query, in one call.
      *
@@ -100,6 +110,18 @@ final class AdvertisementManager
     public function for(Placement|int|string $placement): Builder
     {
         return $this->query()->active()->forPlacement($placement);
+    }
+
+    /**
+     * A single random active ad, optionally constrained to a placement.
+     */
+    public function random(Placement|int|string|null $placement = null): ?Advertisement
+    {
+        $query = $placement === null
+            ? $this->active()
+            : $this->for($placement);
+
+        return $query->inRandomOrder()->first();
     }
 
     /**

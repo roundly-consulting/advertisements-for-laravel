@@ -13,4 +13,9 @@ final class InvalidPrice extends AdvertisementException
     {
         return new self('The price attribute must be a Money instance.');
     }
+
+    public static function currencyMismatch(string $left, string $right): self
+    {
+        return new self("Cannot operate on Money in different currencies: {$left} and {$right}.");
+    }
 }

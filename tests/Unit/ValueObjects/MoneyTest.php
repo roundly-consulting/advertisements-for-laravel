@@ -2,7 +2,30 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Advertisements\Exceptions\InvalidPrice;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
+
+it('adds and subtracts amounts in the same currency', function (): void {
+    $a = new Money(1500, 'EUR');
+    $b = new Money(500, 'EUR');
+
+    expect($a->add($b)->getAmount())->toBe(2000)
+        ->and($a->subtract($b)->getAmount())->toBe(1000)
+        ->and($a->add($b)->getCurrency())->toBe('EUR');
+});
+
+it('rejects adding or subtracting different currencies', function (): void {
+    $eur = new Money(100, 'EUR');
+    $usd = new Money(100, 'USD');
+
+    expect(fn () => $eur->add($usd))->toThrow(InvalidPrice::class);
+    expect(fn () => $eur->subtract($usd))->toThrow(InvalidPrice::class);
+});
+
+it('reports whether the amount is zero', function (): void {
+    expect((new Money(0, 'EUR'))->isZero())->toBeTrue()
+        ->and((new Money(1, 'EUR'))->isZero())->toBeFalse();
+});
 
 it('exposes amount and currency', function (): void {
     $money = new Money(1500, 'eur');

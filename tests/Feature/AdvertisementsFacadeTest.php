@@ -7,6 +7,7 @@ use Illuminate\Foundation\AliasLoader;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 it('creates an advertisement through the facade', function (): void {
@@ -40,6 +41,34 @@ it('exposes a fresh query builder', function (): void {
     expect(Advertisements::query())
         ->toBeInstanceOf(Builder::class)
         ->and(Advertisements::query()->count())->toBe(2);
+});
+
+it('exposes an active-only query', function (): void {
+    Advertisement::factory()->published()->create();
+    Advertisement::factory()->create();
+    Advertisement::factory()->scheduled()->create();
+    Advertisement::factory()->expired()->create();
+    Advertisement::factory()->archived()->create();
+
+    expect(Advertisements::active()->count())->toBe(1);
+});
+
+it('returns a random active ad or null', function (): void {
+    expect(Advertisements::random())->toBeNull();
+
+    $active = Advertisement::factory()->published()->create();
+
+    expect(Advertisements::random()->id)->toBe($active->id);
+});
+
+it('returns a random active ad scoped to a placement', function (): void {
+    $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
+    $active = Advertisement::factory()->published()->create();
+    $active->placements()->attach($sidebar);
+
+    $other = Advertisement::factory()->published()->create();
+
+    expect(Advertisements::random('sidebar')->id)->toBe($active->id);
 });
 
 it('registers the facade alias by default', function (): void {

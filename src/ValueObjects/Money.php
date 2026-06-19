@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Advertisements\ValueObjects;
 
 use NumberFormatter;
+use RoundlyConsulting\Advertisements\Exceptions\InvalidPrice;
 use Stringable;
 
 /**
@@ -36,6 +37,42 @@ final readonly class Money implements Stringable
     {
         return $this->amount === $other->amount
             && $this->currency === $other->currency;
+    }
+
+    /**
+     * Add another amount in the same currency, returning a new Money.
+     *
+     * @throws InvalidPrice when the currencies differ.
+     */
+    public function add(self $other): self
+    {
+        $this->assertSameCurrency($other);
+
+        return new self($this->amount + $other->amount, $this->currency);
+    }
+
+    /**
+     * Subtract another amount in the same currency, returning a new Money.
+     *
+     * @throws InvalidPrice when the currencies differ.
+     */
+    public function subtract(self $other): self
+    {
+        $this->assertSameCurrency($other);
+
+        return new self($this->amount - $other->amount, $this->currency);
+    }
+
+    public function isZero(): bool
+    {
+        return $this->amount === 0;
+    }
+
+    private function assertSameCurrency(self $other): void
+    {
+        if ($this->currency !== $other->currency) {
+            throw InvalidPrice::currencyMismatch($this->currency, $other->currency);
+        }
     }
 
     /**

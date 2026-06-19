@@ -14,7 +14,7 @@ final class DeleteAdvertisement
      */
     public function execute(Advertisement $advertisement): bool
     {
-        $deleted = (bool) $advertisement->delete();
+        $deleted = $advertisement->performModelDelete();
 
         event(new AdvertisementDeleted($advertisement));
 

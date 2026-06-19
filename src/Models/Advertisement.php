@@ -18,6 +18,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
 use RoundlyConsulting\Advertisements\Casts\MoneyCast;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
@@ -124,6 +129,78 @@ class Advertisement extends Model
     public function events(): HasMany
     {
         return $this->hasMany(AdvertisementEvent::class);
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->status === AdvertisementStatus::Published;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isPublished()
+            && ($this->expires_at === null || $this->expires_at->isFuture());
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->status === AdvertisementStatus::Expired;
+    }
+
+    public function isScheduled(): bool
+    {
+        return $this->status === AdvertisementStatus::Scheduled;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->status === AdvertisementStatus::Archived;
+    }
+
+    public function publish(?CarbonInterface $at = null): static
+    {
+        app(PublishAdvertisement::class)->execute($this, $at);
+
+        return $this;
+    }
+
+    public function unpublish(): static
+    {
+        app(UnpublishAdvertisement::class)->execute($this);
+
+        return $this;
+    }
+
+    public function expire(?CarbonInterface $at = null): static
+    {
+        app(ExpireAdvertisement::class)->execute($this, $at);
+
+        return $this;
+    }
+
+    public function archive(): static
+    {
+        app(ArchiveAdvertisement::class)->execute($this);
+
+        return $this;
+    }
+
+    /**
+     * Route deletion through the package action so the soft-delete and the
+     * AdvertisementDeleted event fire whether the model or the action is called.
+     */
+    public function delete(): bool
+    {
+        return app(DeleteAdvertisement::class)->execute($this);
+    }
+
+    /**
+     * The underlying Eloquent (soft-)delete, bypassing the action override so
+     * {@see DeleteAdvertisement} can delete without recursing.
+     */
+    public function performModelDelete(): bool
+    {
+        return (bool) parent::delete();
     }
 
     /**
