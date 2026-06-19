@@ -19,7 +19,6 @@ final class AdvertisementFactory extends Factory
     {
         return [
             'name' => fake()->unique()->words(3, true),
-            'category' => fake()->word(),
             'description' => fake()->sentence(),
             'price' => new Money(fake()->numberBetween(100, 10000), 'EUR'),
             'status' => AdvertisementStatus::Draft->value,

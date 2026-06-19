@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
+use RoundlyConsulting\Advertisements\Models\Category;
 use RoundlyConsulting\Advertisements\Models\Placement;
 
 return [
@@ -31,6 +32,18 @@ return [
     */
 
     'placement_model' => Placement::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Category Model
+    |--------------------------------------------------------------------------
+    |
+    | The Eloquent model used to store advertisement categories. Override with
+    | your own class extending the package model.
+    |
+    */
+
+    'category_model' => Category::class,
 
     /*
     |--------------------------------------------------------------------------

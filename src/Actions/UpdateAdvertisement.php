@@ -7,14 +7,19 @@ namespace RoundlyConsulting\Advertisements\Actions;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementUpdated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 
 final class UpdateAdvertisement
 {
+    public function __construct(
+        private readonly CategoryResolver $categories,
+    ) {}
+
     public function execute(Advertisement $advertisement, AdvertisementData $data): Advertisement
     {
         $advertisement->fill([
             'name' => $data->name,
-            'category' => $data->category,
+            'category_id' => $this->categories->resolveKey($data->category),
             'description' => $data->description,
             'price' => $data->price,
             'meta' => $data->meta,

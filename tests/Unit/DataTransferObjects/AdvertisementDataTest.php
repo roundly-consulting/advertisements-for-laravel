@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
+use RoundlyConsulting\Advertisements\Models\Category;
 use RoundlyConsulting\Advertisements\Tests\User;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
@@ -55,4 +56,15 @@ it('builds from a bare amount with an explicit currency', function (): void {
     $data = AdvertisementData::fromAmount(name: 'Ad', amount: 1200, currency: 'EUR');
 
     expect($data->price->getCurrency())->toBe('EUR');
+});
+
+it('accepts a category model, id or slug', function (): void {
+    $category = Category::factory()->create();
+
+    expect((new AdvertisementData(name: 'Ad', price: new Money(1, 'EUR'), category: $category))->category)
+        ->toBe($category)
+        ->and((new AdvertisementData(name: 'Ad', price: new Money(1, 'EUR'), category: 7))->category)
+        ->toBe(7)
+        ->and(AdvertisementData::fromAmount(name: 'Ad', amount: 1, category: 'bikes')->category)
+        ->toBe('bikes');
 });

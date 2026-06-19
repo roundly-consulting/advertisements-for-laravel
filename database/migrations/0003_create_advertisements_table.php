@@ -15,7 +15,7 @@ return new class extends Migration
             $table->nullableMorphs('author');
             $table->json('name');
             $table->json('slug');
-            $table->string('category')->nullable()->index();
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->json('description')->nullable();
             $table->integer('price')->nullable();
             $table->string('currency')->nullable();

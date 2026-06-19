@@ -9,6 +9,7 @@ use RoundlyConsulting\Advertisements\Actions\UpdateAdvertisement;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementUpdated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Category;
 use RoundlyConsulting\Advertisements\Tests\User;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
@@ -42,6 +43,7 @@ it('updates an advertisement with author and dates', function (): void {
     Carbon::setTestNow('2023-09-12 16:40:00');
 
     $user = User::create();
+    $category = Category::factory()->create(['slug' => 'private']);
 
     $advertisement = app(UpdateAdvertisement::class)->execute($advertisement, new AdvertisementData(
         name: 'Testing',
@@ -54,7 +56,7 @@ it('updates an advertisement with author and dates', function (): void {
 
     expect($advertisement)
         ->name->toBe('Testing')
-        ->category->toBe('private')
+        ->category_id->toBe($category->id)
         ->and($advertisement->price->getAmount())->toBe(50)
         ->and($advertisement->author->is($user))->toBeTrue()
         ->and($advertisement->published_at->format('d.m.Y H:i'))->toBe('13.09.2023 16:40')

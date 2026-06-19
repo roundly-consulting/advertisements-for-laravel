@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Advertisements\DataTransferObjects;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use RoundlyConsulting\Advertisements\Models\Category;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 /**
@@ -20,7 +21,7 @@ final readonly class AdvertisementData
     public function __construct(
         public string $name,
         public Money $price,
-        public ?string $category = null,
+        public Category|int|string|null $category = null,
         public ?string $description = null,
         public ?Model $author = null,
         public ?Collection $meta = null,
@@ -38,7 +39,7 @@ final readonly class AdvertisementData
         string $name,
         int $amount,
         ?string $currency = null,
-        ?string $category = null,
+        Category|int|string|null $category = null,
         ?string $description = null,
         ?Model $author = null,
         ?Collection $meta = null,

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -21,6 +22,7 @@ use RoundlyConsulting\Advertisements\Casts\MoneyCast;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
+use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
@@ -30,7 +32,7 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @property ?int $author_id
  * @property string $name
  * @property ?string $slug
- * @property ?string $category
+ * @property ?int $category_id
  * @property ?string $description
  * @property ?Money $price
  * @property ?string $currency
@@ -52,6 +54,7 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @method static Builder<static> archived()
  * @method static Builder<static> forAuthor(Model $author)
  * @method static Builder<static> forPlacement(Placement|int|string $placement)
+ * @method static Builder<static> inCategory(Category|int|string $category, bool $includeDescendants = false)
  */
 class Advertisement extends Model
 {
@@ -101,6 +104,12 @@ class Advertisement extends Model
     public function author(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /** @return BelongsTo<Category, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /** @return BelongsToMany<Placement, $this> */
@@ -237,6 +246,43 @@ class Advertisement extends Model
         $query->whereHas('placements', function (Builder $query) use ($key): void {
             $query->whereKey($key);
         });
+    }
+
+    /**
+     * Constrain to ads in the given category (model, id, or slug). With
+     * $includeDescendants, nested categories are included too.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeInCategory(Builder $query, Category|int|string $category, bool $includeDescendants = false): void
+    {
+        $key = app(CategoryResolver::class)->resolveKey($category);
+
+        // An unresolvable reference (e.g. unknown slug) matches no ads rather than
+        // every ad with a null category_id.
+        if ($key === null) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        if (! $includeDescendants) {
+            $query->where('category_id', $key);
+
+            return;
+        }
+
+        /** @var class-string<Category> $model */
+        $model = config('advertisements.category_model', Category::class);
+        $root = $model::query()->find($key);
+
+        $ids = [$key];
+
+        if ($root !== null) {
+            $ids = [...$ids, ...$root->descendants()->modelKeys()];
+        }
+
+        $query->whereIn('category_id', $ids);
     }
 
     /** @return Builder<static> */
