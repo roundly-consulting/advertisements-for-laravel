@@ -1,0 +1,7 @@
+.idea
+.phpunit.cache
+build
+coverage
+phpunit.xml
+vendor
+node_modules
