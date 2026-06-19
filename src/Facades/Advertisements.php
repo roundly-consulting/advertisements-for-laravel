@@ -14,6 +14,7 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Testing\AdvertisementsFake;
 
 /**
  * @method static Advertisement create(AdvertisementData $data)
@@ -37,6 +38,25 @@ use RoundlyConsulting\Advertisements\Models\Placement;
  */
 final class Advertisements extends Facade
 {
+    /**
+     * Swap the manager for a fake that records impressions and clicks in memory
+     * (forwarding everything else to the real manager) and return it so tests can
+     * assert on tracking without hitting the database.
+     */
+    public static function fake(): AdvertisementsFake
+    {
+        $manager = self::getFacadeRoot();
+
+        $fake = $manager instanceof AdvertisementsFake
+            ? $manager
+            : new AdvertisementsFake($manager);
+
+        self::swap($fake);
+        self::getFacadeApplication()->instance(AdvertisementManager::class, $fake);
+
+        return $fake;
+    }
+
     protected static function getFacadeAccessor(): string
     {
         return AdvertisementManager::class;
