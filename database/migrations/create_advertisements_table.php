@@ -13,10 +13,10 @@ return new class extends Migration
         Schema::create('advertisements', function (Blueprint $table): void {
             $table->id();
             $table->nullableMorphs('author');
-            $table->string('name');
-            $table->string('slug')->unique();
+            $table->json('name');
+            $table->json('slug');
             $table->string('category')->nullable()->index();
-            $table->text('description')->nullable();
+            $table->json('description')->nullable();
             $table->integer('price')->nullable();
             $table->string('currency')->nullable();
             $table->json('meta')->nullable();

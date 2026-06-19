@@ -70,6 +70,13 @@ it('stores a bare string under the current locale', function (): void {
     expect($placement->getTranslations('name'))->toBe(['de' => 'Kopfzeile']);
 });
 
+it('reads an in-memory array value directly', function (): void {
+    $placement = new Placement;
+    $placement->setTranslations('name', ['en' => 'Sidebar', 'de' => 'Seitenleiste']);
+
+    expect($placement->getTranslations('name'))->toBe(['en' => 'Sidebar', 'de' => 'Seitenleiste']);
+});
+
 it('replaces the whole map with setTranslations', function (): void {
     $placement = Placement::factory()->create(['name' => ['en' => 'Old']]);
 

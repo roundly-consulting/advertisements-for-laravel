@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use RoundlyConsulting\Advertisements\Casts\MoneyCast;
+use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
@@ -57,8 +58,12 @@ class Advertisement extends Model
     /** @use HasFactory<AdvertisementFactory> */
     use HasFactory;
 
+    use HasTranslations;
     use MassPrunable;
     use SoftDeletes;
+
+    /** @var list<string> */
+    public array $translatable = ['name', 'description', 'slug'];
 
     /** @var array<string> */
     protected $guarded = [];
@@ -72,9 +77,7 @@ class Advertisement extends Model
     protected static function booted(): void
     {
         static::saving(function (Advertisement $advertisement): void {
-            if ($advertisement->isDirty('name') || $advertisement->slug === null || $advertisement->slug === '') {
-                $advertisement->slug = $advertisement->generateUniqueSlug();
-            }
+            $advertisement->syncSlugForCurrentLocale();
         });
     }
 
@@ -82,6 +85,9 @@ class Advertisement extends Model
     protected function casts(): array
     {
         return [
+            'name' => 'array',
+            'description' => 'array',
+            'slug' => 'array',
             'meta' => 'collection',
             'price' => MoneyCast::class,
             'impressions_count' => 'integer',
@@ -239,13 +245,39 @@ class Advertisement extends Model
         return static::query()->where('expires_at', '<=', now());
     }
 
-    protected function generateUniqueSlug(): string
+    /**
+     * Generate the current locale's slug from that locale's name (or the resolved
+     * name fallback) when the name changed or the slug is missing. Other locales'
+     * slugs are left untouched.
+     */
+    protected function syncSlugForCurrentLocale(): void
     {
-        $base = Str::slug((string) $this->name);
+        $locale = app()->getLocale();
+        $slugs = $this->getTranslations('slug');
+        $currentSlug = $slugs[$locale] ?? null;
+
+        $nameDirty = $this->isDirty('name');
+
+        if (! $nameDirty && $currentSlug !== null && $currentSlug !== '') {
+            return;
+        }
+
+        $source = $this->getTranslation('name', $locale) ?? $this->getTranslation('name');
+
+        if ($source === null || $source === '') {
+            return;
+        }
+
+        $this->setTranslation('slug', $locale, $this->generateUniqueSlug($source, $locale));
+    }
+
+    protected function generateUniqueSlug(string $source, string $locale): string
+    {
+        $base = Str::slug($source);
         $slug = $base;
         $suffix = 1;
 
-        while ($this->slugExists($slug)) {
+        while ($this->slugExists($slug, $locale)) {
             $slug = $base.'-'.$suffix;
             $suffix++;
         }
@@ -253,11 +285,16 @@ class Advertisement extends Model
         return $slug;
     }
 
-    protected function slugExists(string $slug): bool
+    /**
+     * Slug uniqueness is per locale: two ads may share a slug across locales but
+     * not within one. The JSON path query resolves portably across SQLite,
+     * MySQL, and Postgres (Laravel emits `json_extract`).
+     */
+    protected function slugExists(string $slug, string $locale): bool
     {
         return static::query()
             ->withTrashed()
-            ->where('slug', $slug)
+            ->where('slug->'.$locale, $slug)
             ->when($this->exists, fn (Builder $query) => $query->whereKeyNot($this->getKey()))
             ->exists();
     }
