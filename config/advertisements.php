@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use RoundlyConsulting\Advertisements\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 
 return [
 

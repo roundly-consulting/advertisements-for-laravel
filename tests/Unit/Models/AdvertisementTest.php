@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Carbon;
-use RoundlyConsulting\Advertisements\Advertisement;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 it('casts price to a money value object', function (): void {

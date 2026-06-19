@@ -6,7 +6,7 @@ namespace RoundlyConsulting\Advertisements\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
-use InvalidArgumentException;
+use RoundlyConsulting\Advertisements\Exceptions\InvalidPrice;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 /**
@@ -43,7 +43,7 @@ final class MoneyCast implements CastsAttributes
         }
 
         if (! $value instanceof Money) {
-            throw new InvalidArgumentException('The price attribute must be a Money instance.');
+            throw InvalidPrice::mustBeMoneyInstance();
         }
 
         return [

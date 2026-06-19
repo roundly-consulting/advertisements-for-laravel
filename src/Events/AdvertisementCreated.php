@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements\Events;
 
-use RoundlyConsulting\Advertisements\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 
 class AdvertisementCreated
 {

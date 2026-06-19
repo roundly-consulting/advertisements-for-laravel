@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace RoundlyConsulting\Advertisements;
+namespace RoundlyConsulting\Advertisements\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

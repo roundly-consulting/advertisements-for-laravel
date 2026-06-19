@@ -7,8 +7,8 @@ namespace RoundlyConsulting\Advertisements\Actions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use RoundlyConsulting\Advertisements\Advertisement;
 use RoundlyConsulting\Advertisements\Events\AdvertisementUpdated;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 final class UpdateAdvertisement

@@ -32,3 +32,11 @@ it('formats the amount as a currency string', function (): void {
     expect($money->format('en_US'))->toContain('15')
         ->and((string) $money)->toBeString();
 });
+
+it('falls back to a plain string when the locale is invalid', function (): void {
+    // A malformed locale makes NumberFormatter throw on construction, exercising
+    // the manual fallback branch.
+    $money = new Money(1500, 'EUR');
+
+    expect($money->format('not-a-locale'))->toBe('EUR 15.00');
+});

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Schema;
-use RoundlyConsulting\Advertisements\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 
 it('merges the package config', function (): void {
     expect(config('advertisements.model'))->toBe(Advertisement::class);

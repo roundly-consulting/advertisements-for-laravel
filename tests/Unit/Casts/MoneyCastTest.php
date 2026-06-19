@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
-use RoundlyConsulting\Advertisements\Advertisement;
+use RoundlyConsulting\Advertisements\Exceptions\AdvertisementException;
+use RoundlyConsulting\Advertisements\Exceptions\InvalidPrice;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
-it('throws when the price is set to a non-money value', function (): void {
+it('throws an invalid price exception when set to a non-money value', function (): void {
     $advertisement = new Advertisement;
 
     $advertisement->price = 1500;
-})->throws(InvalidArgumentException::class);
+})->throws(InvalidPrice::class, 'The price attribute must be a Money instance.');
+
+it('extends the base package exception', function (): void {
+    expect(InvalidPrice::mustBeMoneyInstance())->toBeInstanceOf(AdvertisementException::class);
+});
 
 it('clears the price columns when set to null', function (): void {
     $advertisement = Advertisement::factory()->create([

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Advertisements\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use RoundlyConsulting\Advertisements\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 /** @extends Factory<Advertisement> */

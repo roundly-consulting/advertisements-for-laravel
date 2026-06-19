@@ -6,8 +6,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
-use RoundlyConsulting\Advertisements\Advertisement;
 use RoundlyConsulting\Advertisements\Events\AdvertisementCreated;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Tests\User;
 
 it('creates an advertisement and dispatches an event', function (): void {
