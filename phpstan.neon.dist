@@ -7,3 +7,6 @@ parameters:
         - src
         - database
         - config
+    # This package ships its own config/ dir; env() is correct there.
+    configDirectories:
+        - config

@@ -6,17 +6,17 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
+use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementCreated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Tests\User;
+use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 it('creates an advertisement and dispatches an event', function (): void {
     Event::fake(AdvertisementCreated::class);
 
     $advertisement = app(CreateAdvertisement::class)->execute(
-        name: 'Testing adv',
-        price: 100,
-        currency: 'EUR',
+        new AdvertisementData(name: 'Testing adv', price: new Money(100, 'EUR')),
     );
 
     Event::assertDispatched(
@@ -35,17 +35,16 @@ it('creates an advertisement with author, meta, publish and expiry dates', funct
 
     $user = User::create();
 
-    $advertisement = app(CreateAdvertisement::class)->execute(
+    $advertisement = app(CreateAdvertisement::class)->execute(new AdvertisementData(
         name: 'Testing',
-        price: 50,
-        currency: 'EUR',
+        price: new Money(50, 'EUR'),
         category: 'private',
         description: 'A description',
         author: $user,
         meta: new Collection(['featured' => true]),
         publishedAt: now()->addDay(),
         expiresAt: now()->addDays(2),
-    );
+    ));
 
     expect($advertisement)
         ->name->toBe('Testing')
@@ -64,9 +63,7 @@ it('uses the model class configured in the config', function (): void {
     config()->set('advertisements.model', Advertisement::class);
 
     $advertisement = app(CreateAdvertisement::class)->execute(
-        name: 'Configured',
-        price: 100,
-        currency: 'EUR',
+        new AdvertisementData(name: 'Configured', price: new Money(100, 'EUR')),
     );
 
     expect($advertisement)->toBeInstanceOf(Advertisement::class);

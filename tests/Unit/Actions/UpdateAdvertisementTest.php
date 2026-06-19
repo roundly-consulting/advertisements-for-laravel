@@ -6,24 +6,22 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UpdateAdvertisement;
+use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementUpdated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Tests\User;
+use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 it('updates an advertisement and dispatches an event', function (): void {
     $advertisement = app(CreateAdvertisement::class)->execute(
-        name: 'Testing adv',
-        price: 100,
-        currency: 'EUR',
+        new AdvertisementData(name: 'Testing adv', price: new Money(100, 'EUR')),
     );
 
     Event::fake(AdvertisementUpdated::class);
 
     $advertisement = app(UpdateAdvertisement::class)->execute(
-        advertisement: $advertisement,
-        name: 'Testing update adv',
-        price: 200,
-        currency: 'EUR',
+        $advertisement,
+        new AdvertisementData(name: 'Testing update adv', price: new Money(200, 'EUR')),
     );
 
     Event::assertDispatched(
@@ -38,25 +36,21 @@ it('updates an advertisement and dispatches an event', function (): void {
 
 it('updates an advertisement with author and dates', function (): void {
     $advertisement = app(CreateAdvertisement::class)->execute(
-        name: 'Testing adv',
-        price: 100,
-        currency: 'EUR',
+        new AdvertisementData(name: 'Testing adv', price: new Money(100, 'EUR')),
     );
 
     Carbon::setTestNow('2023-09-12 16:40:00');
 
     $user = User::create();
 
-    $advertisement = app(UpdateAdvertisement::class)->execute(
-        advertisement: $advertisement,
+    $advertisement = app(UpdateAdvertisement::class)->execute($advertisement, new AdvertisementData(
         name: 'Testing',
-        price: 50,
-        currency: 'EUR',
+        price: new Money(50, 'EUR'),
         category: 'private',
         author: $user,
         publishedAt: now()->addDay(),
         expiresAt: now()->addDays(2),
-    );
+    ));
 
     expect($advertisement)
         ->name->toBe('Testing')
@@ -73,19 +67,14 @@ it('dissociates the author when none is given on update', function (): void {
     $user = User::create();
 
     $advertisement = app(CreateAdvertisement::class)->execute(
-        name: 'With author',
-        price: 100,
-        currency: 'EUR',
-        author: $user,
+        new AdvertisementData(name: 'With author', price: new Money(100, 'EUR'), author: $user),
     );
 
     expect($advertisement->author->is($user))->toBeTrue();
 
     $advertisement = app(UpdateAdvertisement::class)->execute(
-        advertisement: $advertisement,
-        name: 'Without author',
-        price: 100,
-        currency: 'EUR',
+        $advertisement,
+        new AdvertisementData(name: 'Without author', price: new Money(100, 'EUR')),
     );
 
     expect($advertisement->fresh()->author)->toBeNull();

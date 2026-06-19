@@ -4,41 +4,26 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements\Actions;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementCreated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
 
 final class CreateAdvertisement
 {
-    /**
-     * @param  Collection<array-key, mixed>|null  $meta
-     */
-    public function execute(
-        string $name,
-        int $price,
-        string $currency,
-        ?string $category = null,
-        ?string $description = null,
-        ?Model $author = null,
-        ?Collection $meta = null,
-        ?Carbon $publishedAt = null,
-        ?Carbon $expiresAt = null,
-    ): Advertisement {
+    public function execute(AdvertisementData $data): Advertisement
+    {
         $advertisement = $this->newModelInstance([
-            'name' => $name,
-            'category' => $category,
-            'description' => $description,
-            'price' => new Money($price, $currency),
-            'meta' => $meta,
-            'published_at' => $publishedAt,
-            'expires_at' => $expiresAt,
+            'name' => $data->name,
+            'category' => $data->category,
+            'description' => $data->description,
+            'price' => $data->price,
+            'meta' => $data->meta,
+            'published_at' => $data->publishedAt,
+            'expires_at' => $data->expiresAt,
         ]);
 
-        if ($author !== null) {
-            $advertisement->author()->associate($author);
+        if ($data->author !== null) {
+            $advertisement->author()->associate($data->author);
         }
 
         $advertisement->save();

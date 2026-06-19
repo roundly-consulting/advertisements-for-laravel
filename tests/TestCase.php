@@ -19,6 +19,24 @@ abstract class TestCase extends Orchestra
         ];
     }
 
+    /**
+     * Config overrides applied before the package provider boots, so subclasses
+     * can exercise config-gated behaviour (e.g. the facade alias opt-out).
+     *
+     * @return array<string, mixed>
+     */
+    protected function packageConfig(): array
+    {
+        return [];
+    }
+
+    protected function defineEnvironment($app): void
+    {
+        foreach ($this->packageConfig() as $key => $value) {
+            $app['config']->set($key, $value);
+        }
+    }
+
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
