@@ -9,6 +9,12 @@ for prices. A first-class **status** concept, **lifecycle actions** (each dispat
 event), expressive **query scopes**, and an `Advertisements` **facade** make the common paths
 one fluent line, while every underlying action class stays injectable for DI-first code.
 
+It also turns ads into an **ad-serving engine**: assign ads to **placements** (zones),
+**track impressions and clicks** (synchronously or buffered to the queue) with denormalized
+counters and click-through rate, store **per-locale translatable** name/description/slug
+(no third-party dependency), organise ads into a nestable **category** tree, bind routes by
+**slug**, and assert on tracking in tests with `Advertisements::fake()`.
+
 ## Requirements
 
 - PHP 8.3 or 8.4
@@ -39,12 +45,25 @@ The published config file (`config/advertisements.php`):
 
 ```php
 return [
-    // The Eloquent model used to store advertisements. Override with your own
-    // subclass to customise behaviour.
+    // Eloquent models the package resolves. Override with your own subclasses.
     'model' => RoundlyConsulting\Advertisements\Models\Advertisement::class,
+    'placement_model' => RoundlyConsulting\Advertisements\Models\Placement::class,
+    'category_model' => RoundlyConsulting\Advertisements\Models\Category::class,
+    'event_model' => RoundlyConsulting\Advertisements\Models\AdvertisementEvent::class,
 
     // ISO 4217 currency used when a bare amount is given without a currency.
     'default_currency' => env('ADVERTISEMENTS_CURRENCY', 'EUR'),
+
+    // Locale used when the active locale has no translation for an attribute.
+    'fallback_locale' => env('ADVERTISEMENTS_FALLBACK_LOCALE', config('app.fallback_locale', 'en')),
+
+    // Impression / click recording. When "buffered" is true, recording is
+    // dispatched to the queue instead of being written inline.
+    'tracking' => [
+        'buffered' => env('ADVERTISEMENTS_TRACKING_BUFFERED', false),
+        'queue' => env('ADVERTISEMENTS_TRACKING_QUEUE'),
+        'connection' => env('ADVERTISEMENTS_TRACKING_CONNECTION'),
+    ],
 
     // Register the `Advertisements` facade alias automatically.
     'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
@@ -53,8 +72,15 @@ return [
 
 | Key | Type | Default | Purpose |
 |---|---|---|---|
-| `model` | `class-string` | `RoundlyConsulting\Advertisements\Models\Advertisement::class` | The advertisement model the package resolves. |
+| `model` | `class-string` | `…\Models\Advertisement::class` | The advertisement model the package resolves. |
+| `placement_model` | `class-string` | `…\Models\Placement::class` | The placement (zone) model. |
+| `category_model` | `class-string` | `…\Models\Category::class` | The category model. |
+| `event_model` | `class-string` | `…\Models\AdvertisementEvent::class` | The impression/click event model. |
 | `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromAmount()` when none is supplied. |
+| `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale. |
+| `tracking.buffered` | `bool` | `false` (env `ADVERTISEMENTS_TRACKING_BUFFERED`) | Dispatch recording to the queue instead of writing inline. |
+| `tracking.queue` | `?string` | `null` (env `ADVERTISEMENTS_TRACKING_QUEUE`) | Queue name for buffered recording (`null` = default). |
+| `tracking.connection` | `?string` | `null` (env `ADVERTISEMENTS_TRACKING_CONNECTION`) | Queue connection for buffered recording (`null` = default). |
 | `register_facade_alias` | `bool` | `true` (env `ADVERTISEMENTS_FACADE_ALIAS`) | Whether to register the global `Advertisements` alias. Set to `false` to opt out. |
 
 ## Usage
@@ -97,7 +123,7 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
 $data = new AdvertisementData(
     name: 'Vintage road bike',
     price: new Money(25000, 'EUR'),
-    category: 'bikes',
+    category: $bikesCategory, // a Category model, an id, or a slug — resolved to category_id
     description: 'Lightly used, great condition.',
     author: $user,
     meta: new Collection(['featured' => true]),
@@ -182,10 +208,116 @@ Assigning a non-`Money` value to `price` throws
 `RoundlyConsulting\Advertisements\Exceptions\InvalidPrice` (which extends the package's base
 `AdvertisementException`).
 
-### Slugs
+### Placements (zones)
 
-A unique slug is generated from `name` on save and regenerated whenever the name changes.
-Collisions are resolved with a numeric suffix (`vintage-road-bike`, `vintage-road-bike-1`, …).
+Model where an ad renders — sidebar, header, in-feed — and serve the live ads for a zone in
+one call:
+
+```php
+use RoundlyConsulting\Advertisements\Facades\Advertisements;
+use RoundlyConsulting\Advertisements\Models\Placement;
+
+$sidebar = Placement::factory()->create(['slug' => 'sidebar', 'name' => ['en' => 'Sidebar']]);
+
+Advertisements::attachPlacements($ad, ['sidebar', $headerId]); // models, ids, or slugs
+Advertisements::syncPlacements($ad, ['sidebar']);
+Advertisements::detachPlacements($ad, ['sidebar']);
+
+// Active ads in a placement, or one at random:
+Advertisements::for('sidebar')->get();
+Advertisements::random('sidebar');
+
+Advertisement::query()->forPlacement($sidebar)->get(); // model, id, or slug
+```
+
+### Impression & click tracking
+
+Record impressions and clicks — synchronously, or buffered to the queue when
+`tracking.buffered` is true. Both paths write an `advertisement_events` row, bump a
+denormalized counter, and fire an event:
+
+```php
+use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
+use RoundlyConsulting\Advertisements\Facades\Advertisements;
+
+Advertisements::recordImpression($ad, 'sidebar');
+Advertisements::recordClick($ad, 'sidebar', new ImpressionData(
+    ip: $request->ip(),
+    userAgent: $request->userAgent(),
+    referrer: $request->headers->get('referer'),
+));
+
+$ad->impressions(); // int  (impressions_count)
+$ad->clicks();      // int  (clicks_count)
+$ad->ctr();         // float 0.0–1.0
+$ad->events;        // HasMany<AdvertisementEvent>
+```
+
+Listen for `ImpressionRecorded` / `ClickRecorded` (each exposes a public `$event`
+`AdvertisementEvent`). With buffering on, recording returns a `PendingDispatch` and runs via
+`RecordAdvertisementEventJob` on the configured connection/queue.
+
+### Translations
+
+`name`, `description`, and `slug` are per-locale JSON maps via the in-package
+`Concerns\HasTranslations` trait (no third-party dependency). Reading resolves the active
+locale, then `fallback_locale`, then any stored value:
+
+```php
+$ad->setTranslation('name', 'de', 'Vintage Fahrrad')->save();
+
+app()->setLocale('de');
+$ad->name;                          // "Vintage Fahrrad"
+$ad->getTranslation('name', 'en');  // "Vintage Bike"
+$ad->getTranslations('name');       // ['en' => 'Vintage Bike', 'de' => 'Vintage Fahrrad']
+```
+
+Assigning a bare string (`$ad->name = 'Bike'`) stores it under the current locale, so
+single-locale code keeps working.
+
+### Categories
+
+Organise ads into a nestable category tree:
+
+```php
+use RoundlyConsulting\Advertisements\Models\Category;
+
+$vehicles = Category::factory()->create(['slug' => 'vehicles', 'name' => ['en' => 'Vehicles']]);
+$bikes = Category::factory()->create(['parent_id' => $vehicles->id]);
+
+$ad->category;            // BelongsTo<Category>
+$vehicles->children;      // HasMany<Category>
+$vehicles->descendants(); // every nested category
+
+Advertisement::query()->inCategory($vehicles)->get();                          // direct only
+Advertisement::query()->inCategory($vehicles, includeDescendants: true)->get(); // + nested
+```
+
+`inCategory()` accepts a model, id, or slug; an unknown slug matches nothing.
+
+### Slugs and route binding
+
+A unique slug is generated **per locale** from that locale's `name` on save and regenerated
+when the name changes; same-locale collisions get a numeric suffix (`vintage-road-bike`,
+`vintage-road-bike-1`, …), while different locales may share a slug. Advertisements bind by
+slug, matching the active locale first and then the fallback locale:
+
+```php
+// routes/web.php
+Route::get('/ads/{advertisement}', fn (Advertisement $advertisement) => $advertisement);
+// GET /ads/vintage-road-bike resolves the ad whose current-locale slug matches.
+```
+
+### Convenience methods
+
+```php
+$ad->isPublished(); $ad->isActive(); $ad->isExpired(); $ad->isScheduled(); $ad->isArchived();
+
+$ad->publish();   // same action + event as Advertisements::publish($ad)
+$ad->unpublish(); $ad->expire(); $ad->archive(); $ad->delete();
+
+$a->add($b); $a->subtract($b); $a->isZero(); // Money math; mismatched currencies throw InvalidPrice
+```
 
 ### Pruning expired advertisements
 
@@ -227,6 +359,24 @@ Advertisement::factory()->published()->create();
 Advertisement::factory()->scheduled()->create();
 Advertisement::factory()->expired()->create();
 Advertisement::factory()->archived()->create();
+```
+
+### Testing helpers
+
+`Advertisements::fake()` swaps the manager for a fake that records impressions and clicks in
+memory (no DB writes) and forwards everything else to the real manager:
+
+```php
+use RoundlyConsulting\Advertisements\Facades\Advertisements;
+
+$fake = Advertisements::fake();
+
+Advertisements::recordImpression($ad, 'sidebar');
+
+$fake->assertImpressionRecorded();
+$fake->assertImpressionRecorded(fn ($e) => $e->ad->is($ad) && $e->placement === 'sidebar');
+$fake->assertClickRecorded();      // optional closure filter
+$fake->assertNothingRecorded();
 ```
 
 ## Testing
