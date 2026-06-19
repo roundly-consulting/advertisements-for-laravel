@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 
 return [
@@ -30,6 +31,35 @@ return [
     */
 
     'placement_model' => Placement::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Advertisement Event Model
+    |--------------------------------------------------------------------------
+    |
+    | The Eloquent model used to store impression and click events. Override with
+    | your own class extending the package model.
+    |
+    */
+
+    'event_model' => AdvertisementEvent::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tracking
+    |--------------------------------------------------------------------------
+    |
+    | Impression and click recording. When "buffered" is true, recording is
+    | dispatched to the queue (on the optional connection/queue) instead of being
+    | written inline — useful to smooth high write volume.
+    |
+    */
+
+    'tracking' => [
+        'buffered' => env('ADVERTISEMENTS_TRACKING_BUFFERED', false),
+        'queue' => env('ADVERTISEMENTS_TRACKING_QUEUE'),
+        'connection' => env('ADVERTISEMENTS_TRACKING_CONNECTION'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

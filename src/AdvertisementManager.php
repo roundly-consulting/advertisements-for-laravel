@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Advertisements;
 
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\AttachPlacements;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
@@ -13,11 +14,15 @@ use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\DetachPlacements;
 use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
+use RoundlyConsulting\Advertisements\Actions\RecordClick;
+use RoundlyConsulting\Advertisements\Actions\RecordImpression;
 use RoundlyConsulting\Advertisements\Actions\SyncPlacements;
 use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UpdateAdvertisement;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
+use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 
 /**
@@ -119,5 +124,29 @@ final class AdvertisementManager
     public function syncPlacements(Advertisement $advertisement, iterable $placements): Advertisement
     {
         return app(SyncPlacements::class)->execute($advertisement, $placements);
+    }
+
+    /**
+     * Record an impression for the ad — synchronously, or buffered to the queue
+     * per the `advertisements.tracking` config.
+     */
+    public function recordImpression(
+        Advertisement $advertisement,
+        Placement|int|string|null $placement = null,
+        ?ImpressionData $data = null,
+    ): AdvertisementEvent|PendingDispatch {
+        return app(RecordImpression::class)->execute($advertisement, $placement, $data);
+    }
+
+    /**
+     * Record a click for the ad — synchronously, or buffered to the queue per the
+     * `advertisements.tracking` config.
+     */
+    public function recordClick(
+        Advertisement $advertisement,
+        Placement|int|string|null $placement = null,
+        ?ImpressionData $data = null,
+    ): AdvertisementEvent|PendingDispatch {
+        return app(RecordClick::class)->execute($advertisement, $placement, $data);
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -33,6 +34,8 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @property ?Money $price
  * @property ?string $currency
  * @property ?Collection<array-key, mixed> $meta
+ * @property int $impressions_count
+ * @property int $clicks_count
  * @property AdvertisementStatus $status
  * @property ?CarbonInterface $published_at
  * @property ?CarbonInterface $expires_at
@@ -60,6 +63,12 @@ class Advertisement extends Model
     /** @var array<string> */
     protected $guarded = [];
 
+    /** @var array<string, int> */
+    protected $attributes = [
+        'impressions_count' => 0,
+        'clicks_count' => 0,
+    ];
+
     protected static function booted(): void
     {
         static::saving(function (Advertisement $advertisement): void {
@@ -75,6 +84,8 @@ class Advertisement extends Model
         return [
             'meta' => 'collection',
             'price' => MoneyCast::class,
+            'impressions_count' => 'integer',
+            'clicks_count' => 'integer',
             'published_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
@@ -92,6 +103,38 @@ class Advertisement extends Model
         return $this->belongsToMany(Placement::class)
             ->withPivot('meta')
             ->withTimestamps();
+    }
+
+    /** @return HasMany<AdvertisementEvent, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(AdvertisementEvent::class);
+    }
+
+    /**
+     * The denormalized impression count.
+     */
+    public function impressions(): int
+    {
+        return $this->impressions_count;
+    }
+
+    /**
+     * The denormalized click count.
+     */
+    public function clicks(): int
+    {
+        return $this->clicks_count;
+    }
+
+    /**
+     * Click-through rate (0.0–1.0); zero when there are no impressions.
+     */
+    public function ctr(): float
+    {
+        return $this->impressions_count > 0
+            ? $this->clicks_count / $this->impressions_count
+            : 0.0;
     }
 
     /**

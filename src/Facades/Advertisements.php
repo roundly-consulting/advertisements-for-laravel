@@ -6,10 +6,13 @@ namespace RoundlyConsulting\Advertisements\Facades;
 
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Facades\Facade;
 use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
+use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 
 /**
@@ -25,6 +28,8 @@ use RoundlyConsulting\Advertisements\Models\Placement;
  * @method static Advertisement attachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
  * @method static Advertisement detachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
  * @method static Advertisement syncPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
+ * @method static AdvertisementEvent|PendingDispatch recordImpression(Advertisement $advertisement, Placement|int|string|null $placement = null, ?ImpressionData $data = null)
+ * @method static AdvertisementEvent|PendingDispatch recordClick(Advertisement $advertisement, Placement|int|string|null $placement = null, ?ImpressionData $data = null)
  *
  * @see AdvertisementManager
  */

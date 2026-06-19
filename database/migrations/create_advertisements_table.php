@@ -20,6 +20,8 @@ return new class extends Migration
             $table->integer('price')->nullable();
             $table->string('currency')->nullable();
             $table->json('meta')->nullable();
+            $table->unsignedBigInteger('impressions_count')->default(0);
+            $table->unsignedBigInteger('clicks_count')->default(0);
             $table->string('status')->default('draft')->index();
             $table->timestamp('published_at')->nullable();
             $table->timestamp('expires_at')->nullable();
