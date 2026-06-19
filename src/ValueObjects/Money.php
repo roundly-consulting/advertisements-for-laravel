@@ -6,7 +6,6 @@ namespace RoundlyConsulting\Advertisements\ValueObjects;
 
 use NumberFormatter;
 use Stringable;
-use Throwable;
 
 /**
  * Immutable money value object: an integer amount in the currency's minor unit
@@ -44,23 +43,19 @@ final readonly class Money implements Stringable
      * unit and applying the locale's currency formatting.
      *
      * Falls back to a plain "CODE 0.00" rendering when the intl formatter cannot
-     * be built for the given locale or fails to format the value.
+     * format the value (e.g. a currency code that is not a valid ISO 4217 code).
      */
     public function format(?string $locale = null): string
     {
-        try {
-            $formatter = new NumberFormatter(
-                $locale ?? 'en_US',
-                NumberFormatter::CURRENCY,
-            );
+        $formatter = new NumberFormatter(
+            $locale ?? 'en_US',
+            NumberFormatter::CURRENCY,
+        );
 
-            $formatted = $formatter->formatCurrency(
-                $this->amount / 100,
-                $this->currency,
-            );
-        } catch (Throwable) {
-            $formatted = false;
-        }
+        $formatted = $formatter->formatCurrency(
+            $this->amount / 100,
+            $this->currency,
+        );
 
         if ($formatted === false) {
             return sprintf('%s %0.2f', $this->currency, $this->amount / 100);

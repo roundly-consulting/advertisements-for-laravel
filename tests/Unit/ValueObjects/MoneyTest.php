@@ -33,10 +33,10 @@ it('formats the amount as a currency string', function (): void {
         ->and((string) $money)->toBeString();
 });
 
-it('falls back to a plain string when the locale is invalid', function (): void {
-    // A malformed locale makes NumberFormatter throw on construction, exercising
-    // the manual fallback branch.
-    $money = new Money(1500, 'EUR');
+it('falls back to a plain string when the currency code is invalid', function (): void {
+    // ICU requires a 3-letter ISO 4217 code; anything else makes
+    // NumberFormatter::formatCurrency() return false, exercising the fallback.
+    $money = new Money(1500, 'EU');
 
-    expect($money->format('not-a-locale'))->toBe('EUR 15.00');
+    expect($money->format('en_US'))->toBe('EU 15.00');
 });
