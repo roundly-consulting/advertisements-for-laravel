@@ -23,10 +23,18 @@ counters and click-through rate, store **per-locale translatable** name/descript
 (no third-party dependency), organise ads into a nestable **category** tree, bind routes by
 **slug**, and assert on tracking in tests with `Advertisements::fake()`.
 
+On top of that it integrates two sibling packages (see **Integrates with** below): visual
+**creatives per placement** (a responsive image sized to each zone, with a **text-ad
+fallback**) via `media-library-for-laravel`, and **geo-targeting** (serve ads by the viewer's
+country / radius) plus **geo-reported impressions** (per-country reporting) via
+`geolocation-for-laravel`.
+
 ## Requirements
 
-- PHP 8.3 or 8.4
+- PHP 8.4
 - Laravel 12 or 13
+- `roundly-consulting/media-library-for-laravel` and `roundly-consulting/geolocation-for-laravel`
+  (installed automatically as dependencies)
 
 ## Installation
 
@@ -46,6 +54,17 @@ Optionally publish the config file:
 ```bash
 php artisan vendor:publish --tag="advertisements-config"
 ```
+
+Optionally publish the text-ad Blade view to restyle the text-ad fallback:
+
+```bash
+php artisan vendor:publish --tag="advertisements-views"
+```
+
+Creatives are stored through `media-library-for-laravel` — configure its `media.disk` and an
+image driver (`gd`/`imagick`) per that package's README. Geo features resolve viewer IPs
+through `geolocation-for-laravel`; configure its provider pipeline (MaxMind, IPinfo, …) per
+that package's README. Both register automatically.
 
 ## Configuration
 
@@ -75,6 +94,26 @@ return [
 
     // Register the `Advertisements` facade alias automatically.
     'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
+
+    // Visual creatives (media-library): one single-file bucket per placement named
+    // "{creative_bucket_prefix}:{placement-slug}" plus a generic "{fallback_bucket}".
+    'media' => [
+        'creative_bucket_prefix' => 'creative',
+        'fallback_bucket' => 'creative',
+        'disk' => env('ADVERTISEMENTS_MEDIA_DISK'), // null = media-library default
+        'responsive_widths' => null,                // null = media-library default ladder
+        'display_variant' => 'display',
+        'use_fallback_bucket' => true,
+        'text_ad_view' => 'advertisements::text-ad',
+    ],
+
+    // Geo-targeting & geo reporting (geolocation).
+    'geo' => [
+        'targeting_enabled' => env('ADVERTISEMENTS_GEO_TARGETING', true),
+        'untargeted_match' => true,                 // ads with no targeting match every viewer
+        'match_when_unknown' => 'untargeted_only',  // unresolved viewer: 'untargeted_only' | 'all'
+        'stamp_events' => env('ADVERTISEMENTS_GEO_STAMP', true),
+    ],
 ];
 ```
 
@@ -90,6 +129,17 @@ return [
 | `tracking.queue` | `?string` | `null` (env `ADVERTISEMENTS_TRACKING_QUEUE`) | Queue name for buffered recording (`null` = default). |
 | `tracking.connection` | `?string` | `null` (env `ADVERTISEMENTS_TRACKING_CONNECTION`) | Queue connection for buffered recording (`null` = default). |
 | `register_facade_alias` | `bool` | `true` (env `ADVERTISEMENTS_FACADE_ALIAS`) | Whether to register the global `Advertisements` alias. Set to `false` to opt out. |
+| `media.creative_bucket_prefix` | `string` | `creative` | Prefix for the per-placement bucket name (`{prefix}:{slug}`). |
+| `media.fallback_bucket` | `string` | `creative` | Generic, size-less creative bucket tried before the text-ad fallback. |
+| `media.disk` | `?string` | `null` (env `ADVERTISEMENTS_MEDIA_DISK`) | Disk for creatives (`null` = media-library default). |
+| `media.responsive_widths` | `?list<int>` | `null` | Responsive width ladder (`null` = media-library default). |
+| `media.display_variant` | `string` | `display` | Variant name fit to the placement dimensions. |
+| `media.use_fallback_bucket` | `bool` | `true` | Try the generic creative bucket before the text ad. |
+| `media.text_ad_view` | `string` | `advertisements::text-ad` | Blade view rendering the text-ad fallback. |
+| `geo.targeting_enabled` | `bool` | `true` (env `ADVERTISEMENTS_GEO_TARGETING`) | Apply geo targeting in `targetedFor()`. |
+| `geo.untargeted_match` | `bool` | `true` | Ads with no targeting match every viewer. |
+| `geo.match_when_unknown` | `string` | `untargeted_only` | Serving when the viewer is unresolved: `untargeted_only` or `all`. |
+| `geo.stamp_events` | `bool` | `true` (env `ADVERTISEMENTS_GEO_STAMP`) | Stamp the viewer country (+ region/city/coords) onto recorded events. |
 
 ## Usage
 
@@ -386,6 +436,86 @@ $fake->assertImpressionRecorded(fn ($e) => $e->ad->is($ad) && $e->placement === 
 $fake->assertClickRecorded();      // optional closure filter
 $fake->assertNothingRecorded();
 ```
+
+### Creatives & media
+
+Each placement has its own single-file creative bucket with a `display` variant fit to that
+placement's `width`×`height`. Attach an image and read it back, or render it (an image when one
+exists, the text ad otherwise):
+
+```php
+use Illuminate\Http\UploadedFile;
+
+// Attach a creative for a placement (model, id, or slug).
+$ad->addCreative(UploadedFile::fake()->image('banner.jpg', 300, 250), 'sidebar');
+
+$ad->creativeFor('sidebar');                 // ?Media (placement-specific, then generic)
+$ad->creativeUrl('sidebar');                 // display-variant URL, or '' / fallback when empty
+$ad->creativeUrl('sidebar', '');             // the original
+
+// Responsive <img> when a creative exists, else the text-ad fallback (name + description + price).
+echo $ad->renderCreative('sidebar', ['class' => 'ad']);
+```
+
+The text ad renders through the publishable `advertisements::text-ad` Blade view, so hosts can
+restyle it. Bind your own `RoundlyConsulting\Advertisements\Contracts\CreativeRenderer` to swap
+the whole resolution chain.
+
+### Geo-targeting
+
+Ads declare targeting (allowed/blocked countries and/or a radius around a point) via a
+`Targeting` value object. At serve time, resolve the active ads for a placement that match the
+viewer's location:
+
+```php
+use RoundlyConsulting\Advertisements\Facades\Advertisements;
+use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Coordinates;
+
+$ad->targeting = new Targeting(
+    countries: ['SK', 'CZ'],                 // allow list (empty = any)
+    excludeCountries: ['RU'],                // deny list
+    center: new Coordinates(48.1486, 17.1077),
+    radiusKm: 50.0,
+);
+$ad->save();
+
+// Resolve the viewer from the request IP (geolocation), or pass a Location / null:
+$ads = Advertisements::targetedFor('sidebar', request())->get();
+
+// Or the model scope directly:
+Advertisement::query()->active()->forPlacement('sidebar')->targetedAt($location)->get();
+```
+
+Untargeted ads match every viewer (configurable). When the viewer cannot be resolved, only
+untargeted ads are served (or all, per `geo.match_when_unknown`).
+
+### Geo-reported impressions
+
+When `geo.stamp_events` is on, recording stamps the viewer's country (indexed `country_code`
+column) plus region/city/coords (in the event `meta`) from the impression IP, for per-country
+reporting:
+
+```php
+use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
+
+Advertisements::recordImpression($ad, 'sidebar', new ImpressionData(ip: $request->ip()));
+
+$ad->impressionsByCountry(); // ['SK' => 1240, 'CZ' => 310]
+$ad->clicksByCountry();      // ['SK' => 58]
+```
+
+Resolution failures never abort the record — the event is saved with a null country.
+
+## Integrates with
+
+This package builds directly on two sibling roundly-consulting packages (hard `require`s, wired
+per the org's [cross-package integration plan](../docs/cross-package-integration-plan.md)):
+
+- **[media-library-for-laravel](https://github.com/roundly-consulting/media-library-for-laravel)**
+  — per-placement creatives, responsive variants, the `display` variant, and the text-ad fallback.
+- **[geolocation-for-laravel](https://github.com/roundly-consulting/geolocation-for-laravel)**
+  — viewer location for geo-targeting and the geo-stamped, per-country impression reports.
 
 ## Testing
 
