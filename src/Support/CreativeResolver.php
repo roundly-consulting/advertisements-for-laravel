@@ -1,0 +1,86 @@
+<?php
+
+declare(strict_types=1);
+
+namespace RoundlyConsulting\Advertisements\Support;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+use Illuminate\Support\HtmlString;
+use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\MediaLibrary\Models\Media;
+
+/**
+ * Resolves what to render for an advertisement in a placement: the placement's responsive
+ * image creative when one exists, otherwise a text ad built from the ad's own fields and
+ * rendered through the publishable `advertisements::text-ad` Blade view.
+ *
+ * Bound to the {@see CreativeRenderer} contract — bind your own implementation to swap the chain.
+ */
+final class CreativeResolver implements CreativeRenderer
+{
+    public function __construct(
+        private readonly ViewFactory $views,
+    ) {}
+
+    /**
+     * @param  array<string, string>  $attributes
+     */
+    public function render(Advertisement $advertisement, Placement|int|string $placement, array $attributes = []): HtmlString
+    {
+        $media = $advertisement->creativeFor($placement);
+
+        if ($media instanceof Media && $media->isImage()) {
+            return new HtmlString($this->renderImage($advertisement, $media, $attributes));
+        }
+
+        return $this->renderTextAd($advertisement, $this->resolvePlacement($placement), $attributes);
+    }
+
+    /**
+     * @param  array<string, string>  $attributes
+     */
+    private function renderImage(Advertisement $advertisement, Media $media, array $attributes): string
+    {
+        $attributes['alt'] ??= (string) ($advertisement->name ?? '');
+
+        // Hydrate the inverse relation so URL generation does not lazily reload the owner.
+        $media->setRelation('model', $advertisement);
+
+        return $media->responsiveImage($advertisement->displayVariant(), $attributes);
+    }
+
+    /**
+     * @param  array<string, string>  $attributes
+     */
+    private function renderTextAd(Advertisement $advertisement, ?Placement $placement, array $attributes): HtmlString
+    {
+        $html = $this->views->make($this->textAdView(), [
+            'advertisement' => $advertisement,
+            'placement' => $placement,
+            'attributes' => $attributes,
+        ])->render();
+
+        return new HtmlString(trim($html));
+    }
+
+    private function resolvePlacement(Placement|int|string $placement): ?Placement
+    {
+        if ($placement instanceof Placement) {
+            return $placement;
+        }
+
+        /** @var class-string<Placement> $model */
+        $model = config('advertisements.placement_model', Placement::class);
+
+        return is_int($placement)
+            ? $model::query()->find($placement)
+            : $model::query()->where('slug', $placement)->first();
+    }
+
+    private function textAdView(): string
+    {
+        return (string) config('advertisements.media.text_ad_view', 'advertisements::text-ad');
+    }
+}
