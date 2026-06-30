@@ -14,6 +14,8 @@ use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
+use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 
 /**
  * The single code path that persists a tracking event. Both the synchronous and
@@ -24,6 +26,7 @@ final class RecordAdvertisementEvent
 {
     public function __construct(
         private readonly PlacementResolver $resolver,
+        private readonly ViewerLocationResolver $viewerLocation,
     ) {}
 
     public function execute(
@@ -40,7 +43,18 @@ final class RecordAdvertisementEvent
         $event->occurred_at = $data !== null && $data->occurredAt !== null
             ? $data->occurredAt
             : Carbon::now();
-        $event->meta = new Collection($data?->toMeta() ?? []);
+
+        $meta = $data?->toMeta() ?? [];
+        $location = $this->resolveLocation($data);
+
+        // Only a meaningful location (a resolved country) is stamped; the geolocation
+        // default/last-resort provider yields an empty country we treat as unresolved.
+        if ($location instanceof Location && $location->countryIsoCode !== '') {
+            $event->country_code = $location->countryIsoCode;
+            $meta = [...$meta, ...$this->locationMeta($location)];
+        }
+
+        $event->meta = new Collection($meta);
         $event->save();
 
         // increment() is a single atomic statement, so concurrent records do not
@@ -52,6 +66,36 @@ final class RecordAdvertisementEvent
             : new ClickRecorded($event));
 
         return $event;
+    }
+
+    /**
+     * Resolve the viewer's location from the impression IP for geo stamping, when enabled.
+     * Resolution failure (or no IP) returns null and never aborts the record.
+     */
+    private function resolveLocation(?ImpressionData $data): ?Location
+    {
+        if (! (bool) config('advertisements.geo.stamp_events', true)) {
+            return null;
+        }
+
+        if ($data === null || $data->ip === null || $data->ip === '') {
+            return null;
+        }
+
+        return $this->viewerLocation->resolve($data->ip);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function locationMeta(Location $location): array
+    {
+        return array_filter([
+            'region' => $location->region,
+            'city' => $location->city,
+            'latitude' => $location->latitude,
+            'longitude' => $location->longitude,
+        ], static fn (mixed $value): bool => $value !== '');
     }
 
     private function newEventInstance(): AdvertisementEvent
