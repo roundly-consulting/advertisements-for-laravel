@@ -24,12 +24,19 @@ use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
 use RoundlyConsulting\Advertisements\Casts\MoneyCast;
+use RoundlyConsulting\Advertisements\Casts\TargetingCast;
+use RoundlyConsulting\Advertisements\Concerns\HasAdvertisementMedia;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
+use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Coordinates;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
+use RoundlyConsulting\MediaLibrary\Contracts\HasMedia;
 
 /**
  * @property int $id
@@ -42,6 +49,9 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @property ?Money $price
  * @property ?string $currency
  * @property ?Collection<array-key, mixed> $meta
+ * @property ?Targeting $targeting
+ * @property ?float $target_latitude
+ * @property ?float $target_longitude
  * @property int $impressions_count
  * @property int $clicks_count
  * @property AdvertisementStatus $status
@@ -60,12 +70,14 @@ use RoundlyConsulting\Advertisements\ValueObjects\Money;
  * @method static Builder<static> forAuthor(Model $author)
  * @method static Builder<static> forPlacement(Placement|int|string $placement)
  * @method static Builder<static> inCategory(Category|int|string $category, bool $includeDescendants = false)
+ * @method static Builder<static> targetedAt(Location|Coordinates|string|null $viewer)
  */
-class Advertisement extends Model
+class Advertisement extends Model implements HasMedia
 {
+    use HasAdvertisementMedia;
+
     /** @use HasFactory<AdvertisementFactory> */
     use HasFactory;
-
     use HasTranslations;
     use MassPrunable;
     use SoftDeletes;
@@ -97,6 +109,9 @@ class Advertisement extends Model
             'description' => 'array',
             'slug' => 'array',
             'meta' => 'collection',
+            'targeting' => TargetingCast::class,
+            'target_latitude' => 'float',
+            'target_longitude' => 'float',
             'price' => MoneyCast::class,
             'impressions_count' => 'integer',
             'clicks_count' => 'integer',
@@ -323,6 +338,91 @@ class Advertisement extends Model
         $query->whereHas('placements', function (Builder $query) use ($key): void {
             $query->whereKey($key);
         });
+    }
+
+    /**
+     * Constrain to ads served to a viewer's location: untargeted ads (when
+     * `geo.untargeted_match`) plus targeted ads whose country/radius rules the viewer
+     * satisfies. A null/unresolved viewer serves only untargeted ads, or every ad, per
+     * `geo.match_when_unknown`. Targeting is evaluated precisely in PHP (exact Haversine)
+     * over the candidate set already constrained by the surrounding query.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeTargetedAt(Builder $query, Location|Coordinates|string|null $viewer): void
+    {
+        if ($viewer === null) {
+            if (config('advertisements.geo.match_when_unknown', 'untargeted_only') === 'all') {
+                return;
+            }
+
+            $query->whereNull('targeting');
+
+            return;
+        }
+
+        $matched = (clone $query)
+            ->whereNotNull('targeting')
+            ->get(['id', 'targeting'])
+            ->filter(fn (self $ad): bool => $ad->targeting !== null && $this->viewerMatches($ad->targeting, $viewer))
+            ->modelKeys();
+
+        $untargetedMatch = (bool) config('advertisements.geo.untargeted_match', true);
+
+        $query->where(function (Builder $query) use ($untargetedMatch, $matched): void {
+            if ($untargetedMatch) {
+                $query->whereNull('targeting');
+            }
+
+            $query->orWhereIn('id', $matched);
+        });
+    }
+
+    private function viewerMatches(Targeting $targeting, Location|Coordinates|string $viewer): bool
+    {
+        return match (true) {
+            $viewer instanceof Location => $targeting->matches($viewer),
+            $viewer instanceof Coordinates => $targeting->matchesCoordinates($viewer),
+            default => $targeting->matchesCountry($viewer),
+        };
+    }
+
+    /**
+     * Recorded impressions grouped by the stamped viewer country, e.g. `['SK' => 12]`.
+     *
+     * @return array<string, int>
+     */
+    public function impressionsByCountry(): array
+    {
+        return $this->eventCountsByCountry(AdvertisementEventType::Impression);
+    }
+
+    /**
+     * Recorded clicks grouped by the stamped viewer country.
+     *
+     * @return array<string, int>
+     */
+    public function clicksByCountry(): array
+    {
+        return $this->eventCountsByCountry(AdvertisementEventType::Click);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function eventCountsByCountry(AdvertisementEventType $type): array
+    {
+        /** @var array<string, int> $counts */
+        $counts = $this->events()
+            ->where('type', $type->value)
+            ->whereNotNull('country_code')
+            ->selectRaw('country_code, count(*) as aggregate')
+            ->groupBy('country_code')
+            ->pluck('aggregate', 'country_code')
+            ->map(static fn (mixed $count): int => (int) $count)
+            ->all();
+
+        return $counts;
     }
 
     /**

@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Advertisements\Facades;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\PendingDispatch;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
@@ -15,6 +16,7 @@ use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\Testing\AdvertisementsFake;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 
 /**
  * @method static Advertisement create(AdvertisementData $data)
@@ -28,6 +30,7 @@ use RoundlyConsulting\Advertisements\Testing\AdvertisementsFake;
  * @method static Builder<Advertisement> active()
  * @method static ?Advertisement random(Placement|int|string|null $placement = null)
  * @method static Builder<Advertisement> for(Placement|int|string $placement)
+ * @method static Builder<Advertisement> targetedFor(Placement|int|string $placement, Request|Location|null $viewer = null)
  * @method static Advertisement attachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
  * @method static Advertisement detachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
  * @method static Advertisement syncPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)

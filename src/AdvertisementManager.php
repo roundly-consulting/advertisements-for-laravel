@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Advertisements;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\PendingDispatch;
+use Illuminate\Http\Request;
 use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\AttachPlacements;
 use RoundlyConsulting\Advertisements\Actions\CreateAdvertisement;
@@ -24,6 +25,8 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
+use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 
 /**
  * Expressive entry point over the advertisement action classes. The actions
@@ -40,6 +43,7 @@ final class AdvertisementManager
         private readonly ExpireAdvertisement $expire,
         private readonly ArchiveAdvertisement $archive,
         private readonly DeleteAdvertisement $delete,
+        private readonly ViewerLocationResolver $viewerLocation,
     ) {}
 
     public function create(AdvertisementData $data): Advertisement
@@ -110,6 +114,27 @@ final class AdvertisementManager
     public function for(Placement|int|string $placement): Builder
     {
         return $this->query()->active()->forPlacement($placement);
+    }
+
+    /**
+     * The active ads in a placement that target the given viewer's location: the
+     * geo-aware counterpart of `for()`. Pass a Request (or null for the current request)
+     * to resolve the viewer from their IP, or an already-resolved Location. When geo
+     * targeting is disabled, this is identical to `for()`.
+     *
+     * @return Builder<Advertisement>
+     */
+    public function targetedFor(
+        Placement|int|string $placement,
+        Request|Location|null $viewer = null,
+    ): Builder {
+        $query = $this->for($placement);
+
+        if (! (bool) config('advertisements.geo.targeting_enabled', true)) {
+            return $query;
+        }
+
+        return $query->targetedAt($this->viewerLocation->resolve($viewer));
     }
 
     /**

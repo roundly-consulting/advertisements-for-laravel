@@ -110,4 +110,49 @@ return [
 
     'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Media (creatives)
+    |--------------------------------------------------------------------------
+    |
+    | Visual creatives are stored through roundly-consulting/media-library-for-laravel.
+    | Each placement gets its own single-file bucket named "{prefix}:{placement-slug}"
+    | with a "display" variant fit to that placement's width x height. A generic,
+    | size-less "{fallback_bucket}" bucket is tried before falling back to a text ad.
+    |
+    */
+
+    'media' => [
+        'creative_bucket_prefix' => 'creative',
+        'fallback_bucket' => 'creative',
+        'disk' => env('ADVERTISEMENTS_MEDIA_DISK'),
+        'responsive_widths' => null,
+        'display_variant' => 'display',
+        'use_fallback_bucket' => true,
+        'text_ad_view' => 'advertisements::text-ad',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Geo (targeting & reporting)
+    |--------------------------------------------------------------------------
+    |
+    | Location awareness is powered by roundly-consulting/geolocation-for-laravel.
+    | Targeting filters the active-ads query to the viewer's resolved location, and
+    | impression/click recording stamps the viewer's country (indexed) plus
+    | region/city/coords (in the event meta) for per-country reporting.
+    |
+    | "match_when_unknown" controls serving when the viewer location cannot be
+    | resolved: "untargeted_only" serves only ads with no targeting, "all" serves
+    | every active ad regardless of targeting.
+    |
+    */
+
+    'geo' => [
+        'targeting_enabled' => env('ADVERTISEMENTS_GEO_TARGETING', true),
+        'untargeted_match' => true,
+        'match_when_unknown' => 'untargeted_only',
+        'stamp_events' => env('ADVERTISEMENTS_GEO_STAMP', true),
+    ],
+
 ];

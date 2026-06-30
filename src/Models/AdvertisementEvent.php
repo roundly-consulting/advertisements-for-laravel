@@ -17,6 +17,7 @@ use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
  * @property int $id
  * @property int $advertisement_id
  * @property ?int $placement_id
+ * @property ?string $country_code
  * @property AdvertisementEventType $type
  * @property CarbonInterface $occurred_at
  * @property ?Collection<array-key, mixed> $meta
