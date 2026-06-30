@@ -4,8 +4,18 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements\Enums;
 
+use RoundlyConsulting\Enums\Helpers;
+
+/**
+ * The kind of tracked advertisement interaction.
+ *
+ * Uses the shared {@see Helpers} trait from `enums-for-laravel`, exposing
+ * `labels()`, `options()`, `validationRule()`, `label()`, and friends.
+ */
 enum AdvertisementEventType: string
 {
+    use Helpers;
+
     case Impression = 'impression';
     case Click = 'click';
 
