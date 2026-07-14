@@ -58,6 +58,30 @@
             "type": "vcs",
             "url": "https://github.com/roundly-consulting/geolocation-for-laravel",
             "no-api": true
+        },
+        {
+            "type": "path",
+            "url": "../http-client-rate-limits-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/http-client-rate-limits-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "path",
+            "url": "../package-toolkit-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/package-toolkit-for-laravel",
+            "no-api": true
         }
     ],
     "require-dev": {
