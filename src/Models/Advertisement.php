@@ -78,6 +78,7 @@ class Advertisement extends Model implements HasMedia
 
     /** @use HasFactory<AdvertisementFactory> */
     use HasFactory;
+
     use HasTranslations;
     use MassPrunable;
     use SoftDeletes;
