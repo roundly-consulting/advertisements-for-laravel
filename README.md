@@ -49,6 +49,11 @@ php artisan vendor:publish --tag="advertisements-migrations"
 php artisan migrate
 ```
 
+The migrations are **publish-only** — the package never loads them itself, so `php artisan
+migrate` runs exactly the seven files you published (timestamped in dependency order:
+categories → placements → advertisements → the pivot → events). Creatives also need
+`media-library-for-laravel`'s own migrations (`vendor:publish --tag="media-migrations"`).
+
 Optionally publish the config file:
 
 ```bash
@@ -93,7 +98,7 @@ return [
     ],
 
     // Register the `Advertisements` facade alias automatically.
-    'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
+    'register_facade_alias' => (bool) env('ADVERTISEMENTS_FACADE_ALIAS', true),
 
     // Visual creatives (media-library): one single-file bucket per placement named
     // "{creative_bucket_prefix}:{placement-slug}" plus a generic "{fallback_bucket}".

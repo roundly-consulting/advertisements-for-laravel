@@ -108,7 +108,7 @@ return [
     |
     */
 
-    'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
+    'register_facade_alias' => (bool) env('ADVERTISEMENTS_FACADE_ALIAS', true),
 
     /*
     |--------------------------------------------------------------------------
