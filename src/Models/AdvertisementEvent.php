@@ -50,13 +50,13 @@ class AdvertisementEvent extends Model
     /** @return BelongsTo<Advertisement, $this> */
     public function advertisement(): BelongsTo
     {
-        return $this->belongsTo(AdvertisementModel::class());
+        return $this->belongsTo(AdvertisementModel::class(), 'advertisement_id');
     }
 
     /** @return BelongsTo<Placement, $this> */
     public function placement(): BelongsTo
     {
-        return $this->belongsTo(PlacementModel::class());
+        return $this->belongsTo(PlacementModel::class(), 'placement_id');
     }
 
     protected static function newFactory(): AdvertisementEventFactory

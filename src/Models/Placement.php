@@ -51,10 +51,20 @@ class Placement extends Model
         ];
     }
 
-    /** @return BelongsToMany<Advertisement, $this> */
+    /**
+     * The pivot table and both of its keys are named explicitly — see
+     * {@see Advertisement::placements()}.
+     *
+     * @return BelongsToMany<Advertisement, $this>
+     */
     public function advertisements(): BelongsToMany
     {
-        return $this->belongsToMany(AdvertisementModel::class())
+        return $this->belongsToMany(
+            AdvertisementModel::class(),
+            'advertisement_placement',
+            'placement_id',
+            'advertisement_id',
+        )
             ->withPivot('meta')
             ->withTimestamps();
     }

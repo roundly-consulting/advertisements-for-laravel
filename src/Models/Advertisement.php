@@ -133,13 +133,25 @@ class Advertisement extends Model implements HasMedia
     /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
-        return $this->belongsTo(CategoryModel::class());
+        return $this->belongsTo(CategoryModel::class(), 'category_id');
     }
 
-    /** @return BelongsToMany<Placement, $this> */
+    /**
+     * The pivot table and both of its keys are named explicitly: Eloquent would
+     * otherwise derive them from the two CLASS names, so a host that points
+     * `advertisements.model`/`placement_model` at its own subclass would query a
+     * pivot table (and column) that no migration ever created.
+     *
+     * @return BelongsToMany<Placement, $this>
+     */
     public function placements(): BelongsToMany
     {
-        return $this->belongsToMany(PlacementModel::class())
+        return $this->belongsToMany(
+            PlacementModel::class(),
+            'advertisement_placement',
+            'advertisement_id',
+            'placement_id',
+        )
             ->withPivot('meta')
             ->withTimestamps();
     }
@@ -147,7 +159,7 @@ class Advertisement extends Model implements HasMedia
     /** @return HasMany<AdvertisementEvent, $this> */
     public function events(): HasMany
     {
-        return $this->hasMany(EventModel::class());
+        return $this->hasMany(EventModel::class(), 'advertisement_id');
     }
 
     public function isPublished(): bool
