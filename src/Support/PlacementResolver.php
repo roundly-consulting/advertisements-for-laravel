@@ -30,7 +30,7 @@ final class PlacementResolver
             return $placement;
         }
 
-        return $this->modelClass()::query()
+        return PlacementModel::query()
             ->where('slug', $placement)
             ->value('id');
     }
@@ -54,16 +54,5 @@ final class PlacementResolver
         }
 
         return $keys;
-    }
-
-    /**
-     * @return class-string<Placement>
-     */
-    private function modelClass(): string
-    {
-        /** @var class-string<Placement> $model */
-        $model = config('advertisements.placement_model', Placement::class);
-
-        return $model;
     }
 }

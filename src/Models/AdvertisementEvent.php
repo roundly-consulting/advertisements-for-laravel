@@ -12,6 +12,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementEventFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
+use RoundlyConsulting\Advertisements\Support\PlacementModel;
 
 /**
  * @property int $id
@@ -23,8 +25,11 @@ use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
  * @property ?Collection<array-key, mixed> $meta
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ *
+ * Not final: `advertisements.event_model` documents pointing this at your own
+ * subclass, which `final` would forbid.
  */
-final class AdvertisementEvent extends Model
+class AdvertisementEvent extends Model
 {
     /** @use HasFactory<AdvertisementEventFactory> */
     use HasFactory;
@@ -45,13 +50,13 @@ final class AdvertisementEvent extends Model
     /** @return BelongsTo<Advertisement, $this> */
     public function advertisement(): BelongsTo
     {
-        return $this->belongsTo(Advertisement::class);
+        return $this->belongsTo(AdvertisementModel::class());
     }
 
     /** @return BelongsTo<Placement, $this> */
     public function placement(): BelongsTo
     {
-        return $this->belongsTo(Placement::class);
+        return $this->belongsTo(PlacementModel::class());
     }
 
     protected static function newFactory(): AdvertisementEventFactory

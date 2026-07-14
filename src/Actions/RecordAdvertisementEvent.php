@@ -13,6 +13,7 @@ use RoundlyConsulting\Advertisements\Events\ImpressionRecorded;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
@@ -100,9 +101,6 @@ final class RecordAdvertisementEvent
 
     private function newEventInstance(): AdvertisementEvent
     {
-        /** @var class-string<AdvertisementEvent> $model */
-        $model = config('advertisements.event_model', AdvertisementEvent::class);
-
-        return new $model;
+        return EventModel::new();
     }
 }

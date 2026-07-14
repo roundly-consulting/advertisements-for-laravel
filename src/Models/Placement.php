@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\PlacementFactory;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 
 /**
  * @property int $id
@@ -23,8 +24,11 @@ use RoundlyConsulting\Advertisements\Database\Factories\PlacementFactory;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property ?Carbon $deleted_at
+ *
+ * Not final: `advertisements.placement_model` documents pointing this at your own
+ * subclass, which `final` would forbid.
  */
-final class Placement extends Model
+class Placement extends Model
 {
     /** @use HasFactory<PlacementFactory> */
     use HasFactory;
@@ -50,7 +54,7 @@ final class Placement extends Model
     /** @return BelongsToMany<Advertisement, $this> */
     public function advertisements(): BelongsToMany
     {
-        return $this->belongsToMany(Advertisement::class)
+        return $this->belongsToMany(AdvertisementModel::class())
             ->withPivot('meta')
             ->withTimestamps();
     }

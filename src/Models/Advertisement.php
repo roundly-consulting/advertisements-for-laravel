@@ -30,7 +30,10 @@ use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
+use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Advertisements\Support\CategoryResolver;
+use RoundlyConsulting\Advertisements\Support\EventModel;
+use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\ValueObjects\Money;
 use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
@@ -130,13 +133,13 @@ class Advertisement extends Model implements HasMedia
     /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(CategoryModel::class());
     }
 
     /** @return BelongsToMany<Placement, $this> */
     public function placements(): BelongsToMany
     {
-        return $this->belongsToMany(Placement::class)
+        return $this->belongsToMany(PlacementModel::class())
             ->withPivot('meta')
             ->withTimestamps();
     }
@@ -144,7 +147,7 @@ class Advertisement extends Model implements HasMedia
     /** @return HasMany<AdvertisementEvent, $this> */
     public function events(): HasMany
     {
-        return $this->hasMany(AdvertisementEvent::class);
+        return $this->hasMany(EventModel::class());
     }
 
     public function isPublished(): bool
@@ -450,9 +453,7 @@ class Advertisement extends Model implements HasMedia
             return;
         }
 
-        /** @var class-string<Category> $model */
-        $model = config('advertisements.category_model', Category::class);
-        $root = $model::query()->find($key);
+        $root = CategoryModel::query()->find($key);
 
         $ids = [$key];
 

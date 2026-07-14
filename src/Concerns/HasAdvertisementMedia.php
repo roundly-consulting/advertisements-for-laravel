@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
 use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\MediaLibrary\Buckets\MediaBucket;
 use RoundlyConsulting\MediaLibrary\Concerns\InteractsWithMedia;
 use RoundlyConsulting\MediaLibrary\Models\Media;
@@ -46,7 +47,7 @@ trait HasAdvertisementMedia
         $this->configureCreativeBucket($this->addMediaBucket($this->fallbackCreativeBucket()), null, null);
 
         // One single-file bucket per placement, each with a "display" variant fit to its dims.
-        foreach ($this->placementModelClass()::query()->get() as $placement) {
+        foreach (PlacementModel::query()->get() as $placement) {
             $name = $this->creativeBucketName($placement);
 
             if ($name === $this->fallbackCreativeBucket()) {
@@ -152,7 +153,7 @@ trait HasAdvertisementMedia
         }
 
         if (is_int($placement)) {
-            return (string) $this->placementModelClass()::query()->whereKey($placement)->value('slug');
+            return (string) PlacementModel::query()->whereKey($placement)->value('slug');
         }
 
         return $placement;
@@ -199,16 +200,5 @@ trait HasAdvertisementMedia
         }
 
         return $clean;
-    }
-
-    /**
-     * @return class-string<Placement>
-     */
-    private function placementModelClass(): string
-    {
-        /** @var class-string<Placement> $model */
-        $model = config('advertisements.placement_model', Placement::class);
-
-        return $model;
     }
 }

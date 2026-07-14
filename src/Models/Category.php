@@ -14,6 +14,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\CategoryFactory;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
+use RoundlyConsulting\Advertisements\Support\CategoryModel;
 
 /**
  * @property int $id
@@ -24,8 +26,11 @@ use RoundlyConsulting\Advertisements\Database\Factories\CategoryFactory;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property ?Carbon $deleted_at
+ *
+ * Not final: `advertisements.category_model` documents pointing this at your own
+ * subclass, which `final` would forbid.
  */
-final class Category extends Model
+class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
     use HasFactory;
@@ -51,19 +56,19 @@ final class Category extends Model
     /** @return BelongsTo<Category, $this> */
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'parent_id');
+        return $this->belongsTo(CategoryModel::class(), 'parent_id');
     }
 
     /** @return HasMany<Category, $this> */
     public function children(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_id');
+        return $this->hasMany(CategoryModel::class(), 'parent_id');
     }
 
     /** @return HasMany<Advertisement, $this> */
     public function advertisements(): HasMany
     {
-        return $this->hasMany(Advertisement::class);
+        return $this->hasMany(AdvertisementModel::class());
     }
 
     /**

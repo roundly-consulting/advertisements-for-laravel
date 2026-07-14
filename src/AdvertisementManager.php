@@ -25,6 +25,7 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 
@@ -89,10 +90,7 @@ final class AdvertisementManager
      */
     public function query(): Builder
     {
-        /** @var class-string<Advertisement> $model */
-        $model = config('advertisements.model', Advertisement::class);
-
-        return $model::query();
+        return AdvertisementModel::query();
     }
 
     /**

@@ -26,19 +26,8 @@ final class CategoryResolver
             return $category;
         }
 
-        return $this->modelClass()::query()
+        return CategoryModel::query()
             ->where('slug', $category)
             ->value('id');
-    }
-
-    /**
-     * @return class-string<Category>
-     */
-    private function modelClass(): string
-    {
-        /** @var class-string<Category> $model */
-        $model = config('advertisements.category_model', Category::class);
-
-        return $model;
     }
 }

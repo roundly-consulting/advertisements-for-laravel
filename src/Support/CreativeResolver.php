@@ -71,12 +71,9 @@ final class CreativeResolver implements CreativeRenderer
             return $placement;
         }
 
-        /** @var class-string<Placement> $model */
-        $model = config('advertisements.placement_model', Placement::class);
-
         return is_int($placement)
-            ? $model::query()->find($placement)
-            : $model::query()->where('slug', $placement)->first();
+            ? PlacementModel::query()->find($placement)
+            : PlacementModel::query()->where('slug', $placement)->first();
     }
 
     private function textAdView(): string

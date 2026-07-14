@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use RoundlyConsulting\Advertisements\Actions\RecordAdvertisementEvent;
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
-use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 
 /**
  * Buffered tracking path: carries ids and a serialised meta payload (never whole
@@ -35,10 +35,7 @@ final class RecordAdvertisementEventJob implements ShouldQueue
 
     public function handle(RecordAdvertisementEvent $record): void
     {
-        /** @var class-string<Advertisement> $model */
-        $model = config('advertisements.model', Advertisement::class);
-
-        $advertisement = $model::query()->find($this->advertisementId);
+        $advertisement = AdvertisementModel::query()->find($this->advertisementId);
 
         if ($advertisement === null) {
             return;

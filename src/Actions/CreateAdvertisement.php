@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Advertisements\Actions;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Events\AdvertisementCreated;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 
 final class CreateAdvertisement
@@ -43,8 +44,7 @@ final class CreateAdvertisement
      */
     private function newModelInstance(array $attributes): Advertisement
     {
-        /** @var class-string<Advertisement> $model */
-        $model = config('advertisements.model', Advertisement::class);
+        $model = AdvertisementModel::class();
 
         return new $model($attributes);
     }
