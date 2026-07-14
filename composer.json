@@ -20,7 +20,8 @@
         "illuminate/contracts": "^12.0|^13.0",
         "roundly-consulting/enums-for-laravel": "@dev",
         "roundly-consulting/geolocation-for-laravel": "@dev",
-        "roundly-consulting/media-library-for-laravel": "@dev"
+        "roundly-consulting/media-library-for-laravel": "@dev",
+        "roundly-consulting/package-toolkit-for-laravel": "@dev"
     },
     "repositories": [
         {
