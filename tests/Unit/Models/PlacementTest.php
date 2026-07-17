@@ -34,9 +34,11 @@ it('exposes advertisements with pivot meta', function (): void {
 
     $loaded = $placement->advertisements()->first();
 
+    // Decoded, not compared as text: `meta` is an uncast pivot column, and `jsonb` re-renders
+    // the document it parsed rather than echoing the exact bytes it was handed.
     expect($loaded)->not->toBeNull()
         ->and($loaded->id)->toBe($ad->id)
-        ->and($loaded->pivot->meta)->toBe(json_encode(['weight' => 5]));
+        ->and(json_decode((string) $loaded->pivot?->meta, true))->toBe(['weight' => 5]);
 });
 
 it('uses slug as its route key', function (): void {

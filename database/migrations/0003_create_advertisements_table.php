@@ -13,13 +13,13 @@ return new class extends Migration
         Schema::create('advertisements', function (Blueprint $table): void {
             $table->id();
             $table->nullableMorphs('author');
-            $table->json('name');
-            $table->json('slug');
+            $table->jsonb('name');
+            $table->jsonb('slug');
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
-            $table->json('description')->nullable();
+            $table->jsonb('description')->nullable();
             $table->integer('price')->nullable();
             $table->string('currency')->nullable();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->unsignedBigInteger('impressions_count')->default(0);
             $table->unsignedBigInteger('clicks_count')->default(0);
             $table->string('status')->default('draft')->index();

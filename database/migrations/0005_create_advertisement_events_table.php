@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('placement_id')->nullable()->constrained()->nullOnDelete();
             $table->string('type')->index();
             $table->timestamp('occurred_at')->index();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->timestamps();
         });
     }

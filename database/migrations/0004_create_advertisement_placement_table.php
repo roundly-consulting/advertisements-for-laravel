@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('advertisement_id')->constrained()->cascadeOnDelete();
             $table->foreignId('placement_id')->constrained()->cascadeOnDelete();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->timestamps();
             $table->unique(['advertisement_id', 'placement_id']);
         });

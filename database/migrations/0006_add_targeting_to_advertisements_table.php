@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::table('advertisements', function (Blueprint $table): void {
             // Country allow/deny lists + optional radius centre, as a small JSON document
             // cast to a Targeting value object.
-            $table->json('targeting')->nullable()->after('meta');
+            $table->jsonb('targeting')->nullable()->after('meta');
 
             // Denormalized centre coordinates so the radius bounding-box pre-filter runs in SQL.
             $table->decimal('target_latitude', 10, 7)->nullable()->after('targeting');

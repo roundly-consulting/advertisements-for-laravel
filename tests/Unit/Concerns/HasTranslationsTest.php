@@ -112,12 +112,19 @@ it('reads an in-memory array value directly', function (): void {
     expect($placement->getTranslations('name'))->toBe(['en' => 'Sidebar', 'de' => 'Seitenleiste']);
 });
 
+/**
+ * `toEqual`, not `toBe`: the contract is that the whole map was replaced — which locales map
+ * to which values — not the order they read back in. `jsonb` sorts object keys, so `de`
+ * precedes `en` on Postgres; pinning `toBe` here would assert the engine's storage order
+ * rather than the replacement. Which locale wins a lookup is pinned deterministically by the
+ * last-resort tests above, so nothing about the resolution contract is lost here.
+ */
 it('replaces the whole map with setTranslations', function (): void {
     $placement = Placement::factory()->create(['name' => ['en' => 'Old']]);
 
     $placement->setTranslations('name', ['en' => 'New', 'de' => 'Neu'])->save();
 
-    expect($placement->fresh()->getTranslations('name'))->toBe(['en' => 'New', 'de' => 'Neu']);
+    expect($placement->fresh()?->getTranslations('name'))->toEqual(['en' => 'New', 'de' => 'Neu']);
 });
 
 it('decodes a raw json string from a freshly loaded model', function (): void {

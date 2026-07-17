@@ -13,10 +13,10 @@ return new class extends Migration
         Schema::create('placements', function (Blueprint $table): void {
             $table->id();
             $table->string('slug')->unique();
-            $table->json('name');
+            $table->jsonb('name');
             $table->unsignedInteger('width')->nullable();
             $table->unsignedInteger('height')->nullable();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

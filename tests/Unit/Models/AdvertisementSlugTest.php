@@ -16,7 +16,9 @@ it('generates a slug per locale from that locale name', function (): void {
     app()->setLocale('de');
     $ad->setTranslation('name', 'de', 'Vintage Fahrrad')->save();
 
-    expect($ad->fresh()->getTranslations('slug'))->toBe([
+    // `toEqual`: what matters is that each locale slugged its own name. `jsonb` sorts object
+    // keys, so the map reads back `de` first on Postgres — storage order, not the contract.
+    expect($ad->fresh()?->getTranslations('slug'))->toEqual([
         'en' => 'vintage-bike',
         'de' => 'vintage-fahrrad',
     ]);

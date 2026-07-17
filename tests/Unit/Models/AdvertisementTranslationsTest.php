@@ -32,11 +32,13 @@ it('keeps single-locale string assignment working', function (): void {
         ->and($ad->fresh()->name)->toBe('Plain String');
 });
 
+// `toEqual`: the map's content is the contract, its key order is the engine's (`jsonb` sorts
+// object keys, so `de` reads back before `en`).
 it('returns the full translation map', function (): void {
     $ad = Advertisement::factory()->create(['name' => 'Bike']);
     $ad->setTranslation('name', 'de', 'Fahrrad')->save();
 
-    expect($ad->fresh()->getTranslations('name'))->toBe([
+    expect($ad->fresh()?->getTranslations('name'))->toEqual([
         'en' => 'Bike',
         'de' => 'Fahrrad',
     ]);
