@@ -28,8 +28,15 @@ afterEach(fn () => Carbon::setTestNow());
 it('scopes published advertisements', function (): void {
     $names = Advertisement::query()->published()->pluck('name')->all();
 
+    // Each exclusion is its OWN single-needle negation. `toContain` is variadic and asserts
+    // that EVERY needle is present, so `not->toContain(a, b, c)` inverts that into "at least
+    // one of a, b, c is absent" — it passes while 'draft ad' is right there in the results,
+    // as long as 'scheduled ad' is not. Measured: the multi-needle form passed with the
+    // published scope returning a draft. One needle per call is the only form that bites.
     expect($names)->toContain('live ad', 'expired ad')
-        ->not->toContain('draft ad', 'scheduled ad', 'archived ad');
+        ->not->toContain('draft ad')
+        ->not->toContain('scheduled ad')
+        ->not->toContain('archived ad');
 });
 
 it('scopes active advertisements', function (): void {
