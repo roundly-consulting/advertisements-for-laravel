@@ -13,8 +13,14 @@ use Illuminate\Database\Eloquent\Model;
  * each listed column to `array`. Stored values are per-locale JSON maps
  * (`['en' => '…', 'de' => '…']`). Reading a translatable attribute returns the
  * value for the active locale, falling back to the configured fallback locale,
- * then the first stored value, then null. Writing a bare string stores it under
- * the current locale, so existing single-locale call sites keep working.
+ * then to the lowest-sorted locale that holds a value, then null. Writing a bare
+ * string stores it under the current locale, so existing single-locale call sites
+ * keep working.
+ *
+ * That last resort sorts rather than taking "the first stored value": the order a JSON
+ * object's keys come back in belongs to the storage engine (Postgres `jsonb` and MySQL
+ * `json` both normalise them), so an iteration-order pick returns different translations
+ * on different engines for the same row.
  *
  * @phpstan-require-extends Model
  *
@@ -40,13 +46,21 @@ trait HasTranslations
             return $translations[$fallback];
         }
 
-        foreach ($translations as $value) {
-            if ($value !== null) {
-                return $value;
-            }
+        // Last resort: neither the active nor the fallback locale has a value. Pick by a
+        // stable sort on the locale key rather than by iteration order. Iteration order is
+        // the storage engine's choice, not ours — Postgres `jsonb` and MySQL `json` both
+        // normalise object keys, so "the first stored value" resolves to different
+        // translations on different engines for the same row. SQLite is merely the only
+        // engine that preserves insertion order, which is what kept this looking stable.
+        $stored = array_filter($translations, static fn (?string $value): bool => $value !== null);
+
+        if ($stored === []) {
+            return null;
         }
 
-        return null;
+        ksort($stored);
+
+        return reset($stored);
     }
 
     /**

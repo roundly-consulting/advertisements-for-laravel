@@ -46,11 +46,46 @@ it('falls back to the fallback locale when the active locale is missing', functi
     expect($placement->name)->toBe('Sidebar');
 });
 
-it('falls back to the first stored value when neither locale matches', function (): void {
+it('falls back to a stored value when neither locale matches', function (): void {
     config()->set('advertisements.fallback_locale', 'en');
     $placement = Placement::factory()->create(['name' => ['fr' => 'Barre latérale']]);
 
     app()->setLocale('de');
+
+    expect($placement->name)->toBe('Barre latérale');
+});
+
+/**
+ * The last resort must not depend on the order the locales happen to be stored in.
+ *
+ * A single-key map cannot prove this — "first" is unambiguous when there is only one — so
+ * this fixture stores `fr` before `de`, where insertion order and sorted order disagree.
+ * That is the only shape that tells a deterministic last resort from an incidental one, and
+ * it is the shape that decides what a real host actually reads back: the engine chooses the
+ * iteration order, not us. Postgres `jsonb` and MySQL `json` both normalise object keys;
+ * SQLite alone preserves insertion order, and the suite runs on SQLite.
+ *
+ * Reverting the last resort to `reset()` / `array_key_first()` turns this red.
+ */
+it('picks the lowest-sorted locale when neither the active nor the fallback locale matches', function (): void {
+    config()->set('advertisements.fallback_locale', 'en');
+    $placement = Placement::factory()->create([
+        'name' => ['fr' => 'Barre latérale', 'de' => 'Seitenleiste'],
+    ]);
+
+    app()->setLocale('es');
+
+    expect($placement->name)->toBe('Seitenleiste')
+        ->and($placement->fresh()?->name)->toBe('Seitenleiste');
+});
+
+it('skips a null value when picking the lowest-sorted locale', function (): void {
+    config()->set('advertisements.fallback_locale', 'en');
+    $placement = Placement::factory()->create([
+        'name' => ['fr' => 'Barre latérale', 'de' => null],
+    ]);
+
+    app()->setLocale('es');
 
     expect($placement->name)->toBe('Barre latérale');
 });
