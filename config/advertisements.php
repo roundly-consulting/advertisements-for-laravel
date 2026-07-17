@@ -23,6 +23,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Key Type
+    |--------------------------------------------------------------------------
+    |
+    | The key type used for the polymorphic author column. Use "uuid" or "ulid"
+    | when the models that author advertisements use UUID/ULID primary keys,
+    | otherwise leave it as "bigint". Anything unrecognized falls back to
+    | "bigint". Your author models must share one key type — set this to match.
+    |
+    | Supported: "bigint", "uuid", "ulid"
+    |
+    */
+
+    'key_type' => env('ADVERTISEMENTS_KEY_TYPE', 'bigint'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Placement Model
     |--------------------------------------------------------------------------
     |

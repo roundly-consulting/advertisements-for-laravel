@@ -11,11 +11,14 @@ use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Advertisements\Support\CreativeResolver;
 use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
+use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 
 final class AdvertisementsServiceProvider extends PackageServiceProvider
 {
+    use RegistersBlueprintMacros;
+
     public function configurePackage(Package $package): void
     {
         $package
@@ -33,6 +36,15 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(AdvertisementManager::class);
         $this->app->bind(CreativeRenderer::class, CreativeResolver::class);
+    }
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        // The migration's key-type-aware author morph is a macro, so it must exist
+        // before a host runs `php artisan migrate`.
+        $this->registerBlueprintMacros();
     }
 
     /**

@@ -20,7 +20,7 @@ declare(strict_types=1);
  *    direction at all, so a dead key here was undetectable.
  */
 it('ships exactly the config keys it reads', function (): void {
-    expect(__DIR__.'/../../config/advertisements.php')->toSatisfyConfigContract(__DIR__.'/../../src', [
+    expect(__DIR__.'/../../config/advertisements.php')->toSatisfyConfigContract([__DIR__.'/../../src', __DIR__.'/../../database'], [
         // The four model keys are read through the toolkit's `ModelResolver::for('advertisements.…')`
         // seam rather than a `config()` call. They are real reads — they drive the whole swap
         // — but they are not `config(` tokens, so a prefix is what makes them visible.
@@ -34,6 +34,11 @@ it('ships exactly the config keys it reads', function (): void {
             'advertisements.placement_model',
             'advertisements.category_model',
             'advertisements.event_model',
+            // Read through `KeyType::fromConfig('advertisements.key_type')` in the
+            // migration (database/ is scanned above) — a real read that decides the author
+            // morph column type, but not a `config(` token, so the exact key prefix is
+            // what makes it visible.
+            'advertisements.key_type',
         ],
 
         // Deliberately NO `excludeFromReverse` for the provider. The testing README's own
