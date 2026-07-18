@@ -25,11 +25,10 @@ use RoundlyConsulting\MediaLibrary\Models\Media;
  * `advertisement_custom_placement` pivot that no migration ever created.
  */
 beforeEach(function (): void {
-    config()->set('advertisements.model', CustomAdvertisement::class);
-    config()->set('advertisements.placement_model', CustomPlacement::class);
-    config()->set('advertisements.category_model', CustomCategory::class);
-    config()->set('advertisements.event_model', CustomAdvertisementEvent::class);
-
+    // The four model keys are NOT set here: they land before the providers boot, via
+    // SwappedModelsTestCase. A `beforeEach` runs AFTER boot, so setting them here read back
+    // correctly while leaving every observer and listener on the packaged classes — which is
+    // why this file could not have caught a boot-time bug it was named for.
     $this->category = CustomCategory::query()->create([
         'name' => ['en' => 'Homepage'],
         'slug' => 'homepage',

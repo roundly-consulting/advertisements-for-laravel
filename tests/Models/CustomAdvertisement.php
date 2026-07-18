@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Advertisements\Tests\Models;
 
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Testing\Fixtures\Concerns\CountsCreations;
 
 /**
  * A host's own advertisement model, exactly as `advertisements.model` invites.
@@ -13,5 +14,7 @@ use RoundlyConsulting\Advertisements\Models\Advertisement;
  */
 final class CustomAdvertisement extends Advertisement
 {
+    use CountsCreations;
+
     protected $table = 'advertisements';
 }
