@@ -29,23 +29,22 @@ ArchPresets::strictTypes('RoundlyConsulting\Advertisements');
  *  - AdvertisementException, the exception base hosts catch;
  *  - the event classes, left open so a host swapping a model can carry its own payload.
  */
-ArchPresets::finalByDefault('RoundlyConsulting\Advertisements')
-    ->ignoring([
-        Advertisement::class,
-        Placement::class,
-        Category::class,
-        AdvertisementEvent::class,
-        'RoundlyConsulting\Advertisements\Exceptions\AdvertisementException',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementCreated',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementUpdated',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementDeleted',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementPublished',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementUnpublished',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementArchived',
-        'RoundlyConsulting\Advertisements\Events\AdvertisementExpired',
-        'RoundlyConsulting\Advertisements\Events\ImpressionRecorded',
-        'RoundlyConsulting\Advertisements\Events\ClickRecorded',
-    ]);
+ArchPresets::finalByDefault('RoundlyConsulting\Advertisements', [
+    Advertisement::class,
+    Placement::class,
+    Category::class,
+    AdvertisementEvent::class,
+    'RoundlyConsulting\Advertisements\Exceptions\AdvertisementException',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementCreated',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementUpdated',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementDeleted',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementPublished',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementUnpublished',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementArchived',
+    'RoundlyConsulting\Advertisements\Events\AdvertisementExpired',
+    'RoundlyConsulting\Advertisements\Events\ImpressionRecorded',
+    'RoundlyConsulting\Advertisements\Events\ClickRecorded',
+]);
 
 /**
  * The counter-weight, and the fleet's 7×-shipped fatal — advertisements #23 was one of the
