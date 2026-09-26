@@ -47,6 +47,15 @@ All notable changes to `advertisements-for-laravel` will be documented in this f
 
 ### Changed
 
+- **Slugs via `sluggable-for-laravel`.** The in-model slug code is replaced by `HasSlug`.
+  Advertisements generate a slug for every locale present in `name` on create and regenerate
+  only the locales whose name changed; collision suffixes start at `-2` (existing `-1` values
+  stay valid); probing is bounded; a per-locale unique index (`localizedSlug` +
+  `SlugIndexes`) backs the check with race retries; route binding follows current → fallback →
+  any locale. Categories and placements generate their string slug from the fallback-locale
+  name when left empty, keep manual values strictly (`SlugAlreadyTakenException` when taken) and
+  never change it afterwards. Resolvers look slugs up with `whereSlug()`. New
+  `slugs.history` config key (301 redirects from retired advertisement slugs).
 - Moved the model to `RoundlyConsulting\Advertisements\Models\Advertisement`.
 - `CreateAdvertisement` and `UpdateAdvertisement` now take an `AdvertisementData` DTO
   (with `price` as a `Money` value object) instead of positional arguments.
