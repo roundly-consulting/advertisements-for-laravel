@@ -12,8 +12,8 @@ Manage the full advertisement lifecycle — draft, schedule, publish, expire, an
 your Laravel application.
 
 This package ships an `Advertisement` Eloquent model with a polymorphic author, automatic
-slugging, soft deletes, prunable expiry, JSON metadata, and an immutable `Money` value object
-for prices. A first-class **status** concept, **lifecycle actions** (each dispatching an
+slugging, soft deletes, prunable expiry, JSON metadata, and exact, arbitrary-precision
+`Money` prices. A first-class **status** concept, **lifecycle actions** (each dispatching an
 event), expressive **query scopes**, and an `Advertisements` **facade** make the common paths
 one fluent line, while every underlying action class stays injectable for DI-first code.
 
@@ -23,19 +23,22 @@ counters and click-through rate, store **per-locale translatable** name/descript
 (no third-party dependency), organise ads into a nestable **category** tree, bind routes by
 **slug**, and assert on tracking in tests with `Advertisements::fake()`.
 
-On top of that it integrates three sibling packages (see **Integrates with** below): visual
+On top of that it integrates four sibling packages (see **Integrates with** below): visual
 **creatives per placement** (a responsive image sized to each zone, with a **text-ad
 fallback**) via `media-library-for-laravel`, **geo-targeting** (serve ads by the viewer's
 country / radius) plus **geo-reported impressions** (per-country reporting) via
 `geolocation-for-laravel`, and **per-locale slugs** with database-enforced uniqueness, any-locale
-route binding and optional 301 redirects from retired slugs via `sluggable-for-laravel`.
+route binding and optional 301 redirects from retired slugs via `sluggable-for-laravel`, and
+**exact prices** — minor-unit `Money` in a `decimal(38,0)` column, no float anywhere — via
+`money-for-laravel`.
 
 ## Requirements
 
-- PHP 8.4
+- PHP 8.4 with `ext-bcmath`
 - Laravel 12 or 13
-- `roundly-consulting/media-library-for-laravel`, `roundly-consulting/geolocation-for-laravel`
-  and `roundly-consulting/sluggable-for-laravel` (installed automatically as dependencies)
+- `roundly-consulting/media-library-for-laravel`, `roundly-consulting/geolocation-for-laravel`,
+  `roundly-consulting/sluggable-for-laravel` and `roundly-consulting/money-for-laravel`
+  (installed automatically as dependencies)
 
 ## Installation
 
@@ -55,6 +58,9 @@ migrate` runs exactly the seven files you published (timestamped in dependency o
 categories → placements → advertisements → the pivot → events). Creatives also need
 `media-library-for-laravel`'s own migrations (`vendor:publish --tag="media-migrations"`); slug
 history (off by default) needs `sluggable-for-laravel`'s (`vendor:publish --tag="sluggable-migrations"`).
+The `price` column comes from `money-for-laravel`'s `$table->money()` macro — a `decimal(38,0)`
+minor-unit amount plus a `currency` column sized by `money.schema.currency_length` — so money's
+service provider must be registered when you migrate (auto-discovery does it).
 
 The advertisements migration creates one unique slug index **per supported locale** — the
 locales `sluggable-for-laravel` reports at migrate time (`sluggable.locales.supported`, else
@@ -90,7 +96,7 @@ return [
     'category_model' => RoundlyConsulting\Advertisements\Models\Category::class,
     'event_model' => RoundlyConsulting\Advertisements\Models\AdvertisementEvent::class,
 
-    // ISO 4217 currency used when a bare amount is given without a currency.
+    // Currency used by AdvertisementData::fromMinor() / ::fromDecimal() when none is given.
     'default_currency' => env('ADVERTISEMENTS_CURRENCY', 'EUR'),
 
     // Locale used when the active locale has no translation for an attribute.
@@ -140,7 +146,7 @@ return [
 | `placement_model` | `class-string` | `…\Models\Placement::class` | The placement (zone) model. |
 | `category_model` | `class-string` | `…\Models\Category::class` | The category model. |
 | `event_model` | `class-string` | `…\Models\AdvertisementEvent::class` | The impression/click event model. |
-| `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromAmount()` when none is supplied. |
+| `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromMinor()` / `fromDecimal()` when none is supplied. Must be registered in money-for-laravel's currency registry. |
 | `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale; also the slug binding fallback and the name locale category/placement slugs are generated from. |
 | `slugs.history` | `bool` | `false` (env `ADVERTISEMENTS_SLUG_HISTORY`) | Keep retired advertisement slugs and redirect (301) them to the current slug. Needs sluggable's migration. |
 | `tracking.buffered` | `bool` | `false` (env `ADVERTISEMENTS_TRACKING_BUFFERED`) | Dispatch recording to the queue instead of writing inline. |
@@ -166,11 +172,11 @@ return [
 ```php
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
 $ad = Advertisements::create(new AdvertisementData(
     name: 'Vintage road bike',
-    price: new Money(25000, 'EUR'), // 250.00 in minor units
+    price: Money::ofMajor('250.00', 'EUR'),
     category: 'bikes',
     author: $user,                  // any Eloquent model (polymorphic author)
 ));
@@ -188,17 +194,17 @@ The same operations are available as injectable action classes
 
 ### The `AdvertisementData` DTO
 
-Both `create` and `update` take an `AdvertisementData`. `name` and `price` are required;
-everything else is optional:
+Both `create` and `update` take an `AdvertisementData`. Only `name` is required; `price` is a
+nullable `RoundlyConsulting\Money\Money` (a price-less ad passes `price: null` or omits it):
 
 ```php
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
 $data = new AdvertisementData(
     name: 'Vintage road bike',
-    price: new Money(25000, 'EUR'),
+    price: Money::ofMinor(25000, 'EUR'), // 250.00 €
     category: $bikesCategory, // a Category model, an id, or a slug — resolved to category_id
     description: 'Lightly used, great condition.',
     author: $user,
@@ -208,23 +214,74 @@ $data = new AdvertisementData(
 );
 ```
 
-Or build it from a bare amount, defaulting the currency to `default_currency`:
+Or use a factory that names the unit, defaulting the currency to `default_currency`. Neither
+accepts a float:
 
 ```php
-$data = AdvertisementData::fromAmount(name: 'Vintage road bike', amount: 25000); // EUR
-$data = AdvertisementData::fromAmount(name: 'Bike', amount: 25000, currency: 'USD');
+// Minor units (cents): an int or an integer string — wider than int64 is fine.
+$data = AdvertisementData::fromMinor(name: 'Vintage road bike', minor: 25000);          // 250.00 EUR
+$data = AdvertisementData::fromMinor(name: 'Bike', minor: '00199', currency: 'USD');    // 1.99 USD
+
+// Decimal major units: exact, exponent-aware, never rounded.
+$data = AdvertisementData::fromDecimal(name: 'Bike', amount: '1.10');                   // 110 cents
+$data = AdvertisementData::fromDecimal(name: 'Bike', amount: '1500', currency: 'JPY');  // 1500 yen
+AdvertisementData::fromDecimal(name: 'Bike', amount: '19.999');                         // throws RoundingNecessary
 ```
+
+Both take the same optional `category`, `description`, `author`, `meta`, `publishedAt` and
+`expiresAt` arguments as the constructor.
+
+#### From a request
+
+Validate with money's rules and read the price with `Request::money()` — it converts a JSON
+float (`1.1`) exactly, where `(int) ceil($request->float('price') * 100)` stores 1.10 € as 1.11 €:
+
+```php
+use RoundlyConsulting\Money\Rules\{CurrencyCode, MoneyAmount};
+
+$request->validate([
+    'price'    => ['required', MoneyAmount::inCurrencyFrom('currency')->min('0')],
+    'currency' => ['required', new CurrencyCode],
+]);
+
+// Preferred — JSON or form bodies:
+$data = new AdvertisementData(
+    name: (string) $request->string('name'),
+    price: $request->money('price', currencyKey: 'currency'),
+);
+
+// Form-encoded input only (the value is already a string):
+$data = AdvertisementData::fromDecimal(
+    name: (string) $request->string('name'),
+    amount: (string) $request->string('price'),
+    currency: (string) $request->string('currency'),
+);
+```
+
+In API resources, render the price with money's resource — `from()` returns `null` for a
+price-less ad:
+
+```php
+use RoundlyConsulting\Money\Http\Resources\MoneyResource;
+
+'price' => MoneyResource::from($ad->price),
+// {"minor":"1999","decimal":"19.99","currency":"EUR","exponent":2,"formatted":"19,99 €"}
+```
+
+`minor` is a JSON **string**; a frontend doing arithmetic reads `decimal` (or `BigInt(minor)`).
 
 ### Updating an advertisement
 
 ```php
 $ad = Advertisements::update($ad, new AdvertisementData(
     name: 'Vintage road bike (reduced)',
-    price: new Money(19900, 'EUR'),
+    price: Money::ofMinor(19900, 'EUR'),
 ));
 ```
 
-Passing no `author` on update dissociates any existing author.
+Passing no `author` on update dissociates any existing author. A price in another currency
+re-denominates the ad (the action writes the `currency` column first); `price: null` clears the
+amount and leaves `currency` as it was.
 
 ### Status
 
@@ -264,25 +321,32 @@ Advertisement::query()->forAuthor($user)->get();
 Advertisements::query()->active()->get();
 ```
 
-### Prices and the `Money` value object
+### Prices
 
-`Money` stores the amount in **minor units** (e.g. cents) and an ISO 4217 currency code,
-persisted across the `price` (integer) and `currency` (string) columns:
+`price` is cast with money-for-laravel's `AsMoney::currencyColumn('currency')` to a
+`RoundlyConsulting\Money\Money`: the amount lives in `price` as **minor units** (a
+`decimal(38,0)` column), the code in `currency`.
 
 ```php
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
-$money = new Money(amount: 1500, currency: 'EUR'); // €15.00
-$money->getAmount();     // 1500
-$money->getCurrency();   // "EUR"
-$money->format('en_US'); // "€15.00"
-(string) $money;         // "€15.00"
-$money->equals(new Money(1500, 'EUR')); // true
+$ad->price = Money::ofMajor('15.00', 'EUR');
+$ad->price->minor();        // "1500" — a string, never (int)-cast it
+$ad->price->toDecimal();    // "15.00"
+$ad->price->format('sk');   // "15,00 €"
+$ad->currency;              // "EUR"
+
+Advertisement::query()->orderBy('price')->get();   // numeric order
 ```
 
-Assigning a non-`Money` value to `price` throws
-`RoundlyConsulting\Advertisements\Exceptions\InvalidPrice` (which extends the package's base
-`AdvertisementException`).
+- Only `Money|null` can be assigned; anything else throws
+  `RoundlyConsulting\Money\Exceptions\InvalidMoneyValue`.
+- Assigning a price in another currency to a priced ad throws `CurrencyMismatch` — set
+  `currency` first to re-denominate on purpose (`UpdateAdvertisement` does this for you).
+- Writing `null` clears the amount and keeps `currency`.
+- pgsql and MySQL store all 38 digits; SQLite is exact only within int64, so the cast refuses
+  wider amounts there (`InvalidMoneyValue`) instead of silently storing a float.
+- The text-ad fallback renders `$ad->price->format()` in the active locale.
 
 ### Placements (zones)
 
@@ -432,7 +496,7 @@ $ad->isPublished(); $ad->isActive(); $ad->isExpired(); $ad->isScheduled(); $ad->
 $ad->publish();   // same action + event as Advertisements::publish($ad)
 $ad->unpublish(); $ad->expire(); $ad->archive(); $ad->delete();
 
-$a->add($b); $a->subtract($b); $a->isZero(); // Money math; mismatched currencies throw InvalidPrice
+$ad->price?->add(Money::ofMinor(500, 'EUR')); // money's API; mismatched currencies throw CurrencyMismatch
 ```
 
 ### Pruning expired advertisements
@@ -567,7 +631,7 @@ Resolution failures never abort the record — the event is saved with a null co
 
 ## Integrates with
 
-This package builds directly on three sibling roundly-consulting packages (hard `require`s, wired
+This package builds directly on four sibling roundly-consulting packages (hard `require`s, wired
 per the org's [cross-package integration plan](../docs/cross-package-integration-plan.md)):
 
 - **[media-library-for-laravel](https://github.com/roundly-consulting/media-library-for-laravel)**
@@ -577,6 +641,10 @@ per the org's [cross-package integration plan](../docs/cross-package-integration
 - **[sluggable-for-laravel](https://github.com/roundly-consulting/sluggable-for-laravel)**
   — per-locale advertisement slugs, strict category/placement keys, database-enforced
   uniqueness, any-locale route binding, slug history with 301 redirects, and validation rules.
+- **[money-for-laravel](https://github.com/roundly-consulting/money-for-laravel)**
+  — the `Money` price, the `AsMoney` cast and `$table->money()` column, the exact
+  `fromMinor()` / `fromDecimal()` factories, and the `MoneyAmount` / `Request::money()` /
+  `MoneyResource` host recipe.
 
 ## Testing
 
