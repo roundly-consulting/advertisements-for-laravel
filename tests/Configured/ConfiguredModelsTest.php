@@ -43,7 +43,7 @@ beforeEach(function (): void {
 });
 
 it('creates, categorises and reads back the configured advertisement model', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900, category: 'homepage'));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, category: 'homepage'));
 
     expect($ad)->toBeInstanceOf(CustomAdvertisement::class)
         ->and($ad->category_id)->toBe($this->category->getKey())
@@ -52,7 +52,7 @@ it('creates, categorises and reads back the configured advertisement model', fun
 });
 
 it('attaches placements through the pivot the migration actually created', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
     Advertisements::attachPlacements($ad, ['sidebar']);
 
@@ -68,7 +68,7 @@ it('attaches placements through the pivot the migration actually created', funct
 });
 
 it('records tracking events onto the packaged foreign key', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
     $event = Advertisements::recordImpression($ad, 'sidebar');
 
@@ -89,7 +89,7 @@ it('reads a category tree and its advertisements through the configured model', 
         'parent_id' => $this->category->getKey(),
     ]);
 
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900, category: 'homepage-hero'));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, category: 'homepage-hero'));
     $ad->publish();
 
     expect($this->category->advertisements()->getForeignKeyName())->toBe('category_id')
@@ -104,7 +104,7 @@ it('reads a category tree and its advertisements through the configured model', 
 });
 
 it('reports per-country counts for the configured models', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
     Advertisements::recordImpression($ad, 'sidebar');
     Advertisements::recordClick($ad, 'sidebar');
@@ -121,7 +121,7 @@ it('falls back to the packaged models when the config names a foreign model', fu
     config()->set('advertisements.model', Media::class);
     config()->set('advertisements.event_model', Media::class);
 
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
     expect($ad)->toBeInstanceOf(Advertisement::class)
         ->and($ad)->not->toBeInstanceOf(CustomAdvertisement::class)
@@ -132,7 +132,7 @@ it('generates and resolves slugs through the configured models', function (): vo
     $placement = CustomPlacement::query()->create(['name' => ['en' => 'Footer Strip']]);
     $category = CustomCategory::query()->create(['name' => ['en' => 'Garden Tools']]);
 
-    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900, category: 'garden-tools'));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, category: 'garden-tools'));
     Advertisements::attachPlacements($ad, ['footer-strip']);
 
     expect($placement->slug)->toBe('footer-strip')

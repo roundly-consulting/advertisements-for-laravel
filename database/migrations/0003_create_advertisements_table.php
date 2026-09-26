@@ -24,8 +24,9 @@ return new class extends Migration
             $table->localizedSlug('slug');
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->jsonb('description')->nullable();
-            $table->integer('price')->nullable();
-            $table->string('currency')->nullable();
+            // decimal(38,0) amount in minor units + a currency code column sized by
+            // money.schema.currency_length (money-for-laravel's `money()` macro).
+            $table->money('price', currency: 'currency', nullable: true);
             $table->jsonb('meta')->nullable();
             $table->unsignedBigInteger('impressions_count')->default(0);
             $table->unsignedBigInteger('clicks_count')->default(0);

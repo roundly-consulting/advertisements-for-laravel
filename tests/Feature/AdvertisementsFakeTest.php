@@ -7,7 +7,7 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
 it('intercepts tracking and writes no rows', function (): void {
     $fake = Advertisements::fake();
@@ -71,7 +71,7 @@ it('forwards non-tracking calls to the real manager', function (): void {
     Advertisements::fake();
 
     $ad = Advertisements::create(
-        new AdvertisementData(name: 'Forwarded', price: new Money(100, 'EUR')),
+        new AdvertisementData(name: 'Forwarded', price: Money::ofMinor(100, 'EUR')),
     );
 
     expect($ad)->toBeInstanceOf(Advertisement::class)

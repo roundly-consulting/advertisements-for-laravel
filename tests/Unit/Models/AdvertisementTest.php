@@ -5,33 +5,6 @@ declare(strict_types=1);
 use Illuminate\Support\Carbon;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
-
-it('casts price to a money value object', function (): void {
-    $advertisement = Advertisement::factory()->create([
-        'price' => new Money(2500, 'EUR'),
-    ]);
-
-    expect($advertisement->fresh()->price)
-        ->toBeInstanceOf(Money::class)
-        ->and($advertisement->fresh()->price->getAmount())->toBe(2500)
-        ->and($advertisement->fresh()->price->getCurrency())->toBe('EUR');
-});
-
-it('casts price using a different currency', function (): void {
-    $advertisement = Advertisement::factory()->create([
-        'price' => new Money(100, 'USD'),
-    ]);
-
-    expect($advertisement->fresh()->price->getCurrency())->toBe('USD');
-});
-
-it('returns null price when no amount is stored', function (): void {
-    $advertisement = Advertisement::factory()->create();
-    $advertisement->forceFill(['price' => null, 'currency' => null])->save();
-
-    expect($advertisement->fresh()->price)->toBeNull();
-});
 
 it('generates a slug from the name', function (): void {
     $advertisement = Advertisement::factory()->create(['name' => 'My Great Ad']);

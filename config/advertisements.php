@@ -123,8 +123,9 @@ return [
     | Default Currency
     |--------------------------------------------------------------------------
     |
-    | ISO 4217 currency code used when a price is supplied as a bare amount
-    | (e.g. via AdvertisementData::fromAmount()) without an explicit currency.
+    | Currency code used when a price is built with AdvertisementData::fromMinor()
+    | or ::fromDecimal() without an explicit currency. Must be registered in
+    | money-for-laravel's currency registry (any ISO 4217 code by default).
     |
     */
 

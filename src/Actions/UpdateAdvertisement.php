@@ -17,6 +17,12 @@ final class UpdateAdvertisement
 
     public function execute(Advertisement $advertisement, AdvertisementData $data): Advertisement
     {
+        // Currency first: the price cast refuses to re-denominate a currency column that
+        // already holds another code, so switching an ad from EUR to USD is explicit here.
+        if ($data->price !== null) {
+            $advertisement->currency = $data->price->currency()->code;
+        }
+
         $advertisement->fill([
             'name' => $data->name,
             'category_id' => $this->categories->resolveKey($data->category),

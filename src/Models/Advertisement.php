@@ -22,7 +22,6 @@ use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
-use RoundlyConsulting\Advertisements\Casts\MoneyCast;
 use RoundlyConsulting\Advertisements\Casts\TargetingCast;
 use RoundlyConsulting\Advertisements\Concerns\HasAdvertisementMedia;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
@@ -34,11 +33,12 @@ use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
 use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Coordinates;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 use RoundlyConsulting\MediaLibrary\Contracts\HasMedia;
+use RoundlyConsulting\Money\Casts\AsMoney;
+use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Sluggable\Concerns\HasSlug;
 use RoundlyConsulting\Sluggable\Contracts\Sluggable;
 use RoundlyConsulting\Sluggable\Definitions\SlugDefinition;
@@ -117,7 +117,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
             'targeting' => TargetingCast::class,
             'target_latitude' => 'float',
             'target_longitude' => 'float',
-            'price' => MoneyCast::class,
+            'price' => AsMoney::currencyColumn('currency'),
             'impressions_count' => 'integer',
             'clicks_count' => 'integer',
             'published_at' => 'datetime',

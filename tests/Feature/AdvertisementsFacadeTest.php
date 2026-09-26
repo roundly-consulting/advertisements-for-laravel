@@ -8,11 +8,11 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
 it('creates an advertisement through the facade', function (): void {
     $advertisement = Advertisements::create(
-        new AdvertisementData(name: 'Faded ad', price: new Money(2500, 'EUR')),
+        new AdvertisementData(name: 'Faded ad', price: Money::ofMinor(2500, 'EUR')),
     );
 
     expect($advertisement)
@@ -23,16 +23,16 @@ it('creates an advertisement through the facade', function (): void {
 
 it('updates an advertisement through the facade', function (): void {
     $advertisement = Advertisements::create(
-        new AdvertisementData(name: 'Original', price: new Money(100, 'EUR')),
+        new AdvertisementData(name: 'Original', price: Money::ofMinor(100, 'EUR')),
     );
 
     $advertisement = Advertisements::update(
         $advertisement,
-        new AdvertisementData(name: 'Renamed', price: new Money(200, 'EUR')),
+        new AdvertisementData(name: 'Renamed', price: Money::ofMinor(200, 'EUR')),
     );
 
     expect($advertisement->name)->toBe('Renamed')
-        ->and($advertisement->price->getAmount())->toBe(200);
+        ->and($advertisement->price->minor())->toBe('200');
 });
 
 it('exposes a fresh query builder', function (): void {

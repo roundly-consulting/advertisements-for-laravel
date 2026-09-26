@@ -8,6 +8,7 @@ use Illuminate\Support\HtmlString;
 use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Money\Money;
 
 beforeEach(function (): void {
     Storage::fake('public');
@@ -85,10 +86,19 @@ it('renders a text ad for a placement referenced by slug or id', function (): vo
 });
 
 it('includes the price in the text ad when set', function (): void {
-    $ad = Advertisement::factory()->create(['name' => 'Priced ad']);
+    $ad = Advertisement::factory()->create(['name' => 'Priced ad', 'price' => Money::ofMajor('1234.50', 'EUR')]);
     $placement = Placement::factory()->create(['width' => 300, 'height' => 250]);
 
-    expect((string) $ad->renderCreative($placement))->toContain('advertisement-text-ad__price');
+    expect((string) $ad->renderCreative($placement))
+        ->toContain('advertisement-text-ad__price')
+        ->toContain(e(Money::ofMajor('1234.50', 'EUR')->format()));
+});
+
+it('omits the price in the text ad when there is none', function (): void {
+    $ad = Advertisement::factory()->create(['name' => 'Free ad', 'price' => null]);
+    $placement = Placement::factory()->create(['width' => 300, 'height' => 250]);
+
+    expect((string) $ad->renderCreative($placement))->not->toContain('advertisement-text-ad__price');
 });
 
 it('uses a custom renderer bound in the container', function (): void {

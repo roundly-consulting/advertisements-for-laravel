@@ -22,6 +22,6 @@
         <span class="advertisement-text-ad__description">{{ $description }}</span>
     @endif
     @if ($advertisement->price !== null)
-        <span class="advertisement-text-ad__price">{{ $advertisement->price }}</span>
+        <span class="advertisement-text-ad__price">{{ $advertisement->price->format() }}</span>
     @endif
 </div>

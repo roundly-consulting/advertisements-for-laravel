@@ -7,7 +7,7 @@ namespace RoundlyConsulting\Advertisements\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
-use RoundlyConsulting\Advertisements\ValueObjects\Money;
+use RoundlyConsulting\Money\Money;
 
 /** @extends Factory<Advertisement> */
 final class AdvertisementFactory extends Factory
@@ -20,7 +20,7 @@ final class AdvertisementFactory extends Factory
         return [
             'name' => fake()->unique()->words(3, true),
             'description' => fake()->sentence(),
-            'price' => new Money(fake()->numberBetween(100, 10000), 'EUR'),
+            'price' => Money::ofMinor(fake()->numberBetween(100, 10000), 'EUR'),
             'status' => AdvertisementStatus::Draft->value,
         ];
     }
