@@ -29,7 +29,7 @@ it('suffixes a same-locale slug collision', function (): void {
     $second = Advertisement::factory()->create(['name' => 'Same Name']);
 
     expect($first->getTranslation('slug', 'en'))->toBe('same-name')
-        ->and($second->getTranslation('slug', 'en'))->toBe('same-name-1');
+        ->and($second->getTranslation('slug', 'en'))->toBe('same-name-2');
 });
 
 it('allows the same slug across different locales', function (): void {
@@ -66,4 +66,56 @@ it('matches a record by its current-locale slug via json path', function (): voi
 
     expect($found)->not->toBeNull()
         ->and($found->id)->toBe($ad->id);
+});
+
+it('generates a slug for every locale present in the name on create', function (): void {
+    $ad = Advertisement::factory()->create([
+        'name' => ['en' => 'Red Chair', 'sk' => 'Červená stolička', 'de' => 'Roter Stuhl'],
+    ]);
+
+    // Each locale slugs its own name in its own language; storage order is the engine's.
+    expect($ad->fresh()?->getTranslations('slug'))->toEqual([
+        'en' => 'red-chair',
+        'sk' => 'cervena-stolicka',
+        'de' => 'roter-stuhl',
+    ]);
+});
+
+it('regenerates only the locales whose name changed', function (): void {
+    $ad = Advertisement::factory()->create(['name' => ['en' => 'Lamp', 'de' => 'Lampe']]);
+
+    $ad->setTranslation('name', 'de', 'Leuchte')->save();
+
+    expect($ad->fresh()?->getTranslations('slug'))->toEqual([
+        'en' => 'lamp',
+        'de' => 'leuchte',
+    ]);
+});
+
+it('keeps a soft-deleted advertisement slug reserved', function (): void {
+    $gone = Advertisement::factory()->create(['name' => 'Summer Sale']);
+    $gone->delete();
+
+    $next = Advertisement::factory()->create(['name' => 'Summer Sale']);
+
+    expect($gone->fresh()?->trashed())->toBeTrue()
+        ->and($next->getTranslation('slug', 'en'))->toBe('summer-sale-2');
+});
+
+it('keeps an existing suffixed slug when the name is saved unchanged in base', function (): void {
+    Advertisement::factory()->create(['name' => 'Chair']);
+    $second = Advertisement::factory()->create(['name' => 'Chair']);
+
+    // Same base after the rename ("chair"): the -2 suffix must not churn into -3.
+    $second->update(['name' => 'CHAIR']);
+
+    expect($second->fresh()?->getTranslation('slug', 'en'))->toBe('chair-2');
+});
+
+it('finds an advertisement by slug through the configured seam', function (): void {
+    $ad = Advertisement::factory()->create(['name' => ['en' => 'Garden Hose', 'sk' => 'Záhradná hadica']]);
+
+    expect(Advertisement::query()->whereSlug('garden-hose')->value('id'))->toBe($ad->id)
+        ->and(Advertisement::query()->whereSlug('zahradna-hadica', locale: 'sk')->value('id'))->toBe($ad->id)
+        ->and(Advertisement::query()->whereSlug('zahradna-hadica', locale: 'en')->exists())->toBeFalse();
 });

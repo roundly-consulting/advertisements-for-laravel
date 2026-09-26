@@ -6,6 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use RoundlyConsulting\PackageToolkit\Enums\KeyType;
+use RoundlyConsulting\Sluggable\DataTransferObjects\SlugIndexSpec;
+use RoundlyConsulting\Sluggable\Schema\SlugIndexes;
 
 return new class extends Migration
 {
@@ -19,7 +21,7 @@ return new class extends Migration
             $table->id();
             $table->morphKey('author', $keyType, nullable: true);
             $table->jsonb('name');
-            $table->jsonb('slug');
+            $table->localizedSlug('slug');
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->jsonb('description')->nullable();
             $table->integer('price')->nullable();
@@ -33,5 +35,9 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
+
+        // One unique index per supported locale on `slug->{locale}`, trashed rows included
+        // (they keep their slug reserved). Add a locale later with `sluggable:indexes`.
+        SlugIndexes::ensure(SlugIndexSpec::localeMap('advertisements', 'slug'));
     }
 };

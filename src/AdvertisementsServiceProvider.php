@@ -67,6 +67,7 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
             'Creatives' => $this->creatives(),
             'Geo targeting' => $this->geoTargeting(),
             'Geo stamping' => config('advertisements.geo.stamp_events') ? 'ON' : 'OFF',
+            'Slug history' => config('advertisements.slugs.history') ? 'ON' : 'OFF',
             'Facade alias' => config('advertisements.register_facade_alias') === false ? 'OFF' : 'ON',
         ];
     }

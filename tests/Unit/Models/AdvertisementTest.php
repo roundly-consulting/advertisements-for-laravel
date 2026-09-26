@@ -44,7 +44,7 @@ it('generates a unique slug when names collide', function (): void {
     $second = Advertisement::factory()->create(['name' => 'Same Name']);
 
     expect($first->slug)->toBe('same-name')
-        ->and($second->slug)->toBe('same-name-1');
+        ->and($second->slug)->toBe('same-name-2');
 });
 
 it('regenerates the slug when the name changes', function (): void {

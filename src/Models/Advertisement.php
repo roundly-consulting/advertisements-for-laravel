@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
 use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
@@ -40,6 +39,14 @@ use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Coordinates;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 use RoundlyConsulting\MediaLibrary\Contracts\HasMedia;
+use RoundlyConsulting\Sluggable\Concerns\HasSlug;
+use RoundlyConsulting\Sluggable\Contracts\Sluggable;
+use RoundlyConsulting\Sluggable\Definitions\SlugDefinition;
+use RoundlyConsulting\Sluggable\Definitions\SlugOptions;
+use RoundlyConsulting\Sluggable\Enums\EmptySourcePolicy;
+use RoundlyConsulting\Sluggable\Enums\LocaleFallback;
+use RoundlyConsulting\Sluggable\Enums\TargetLocales;
+use RoundlyConsulting\Sluggable\Enums\UpdatePolicy;
 
 /**
  * @property int $id
@@ -75,13 +82,14 @@ use RoundlyConsulting\MediaLibrary\Contracts\HasMedia;
  * @method static Builder<static> inCategory(Category|int|string $category, bool $includeDescendants = false)
  * @method static Builder<static> targetedAt(Location|Coordinates|string|null $viewer)
  */
-class Advertisement extends Model implements HasMedia
+class Advertisement extends Model implements HasMedia, Sluggable
 {
     use HasAdvertisementMedia;
 
     /** @use HasFactory<AdvertisementFactory> */
     use HasFactory;
 
+    use HasSlug;
     use HasTranslations;
     use MassPrunable;
     use SoftDeletes;
@@ -97,13 +105,6 @@ class Advertisement extends Model implements HasMedia
         'impressions_count' => 0,
         'clicks_count' => 0,
     ];
-
-    protected static function booted(): void
-    {
-        static::saving(function (Advertisement $advertisement): void {
-            $advertisement->syncSlugForCurrentLocale();
-        });
-    }
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -482,92 +483,28 @@ class Advertisement extends Model implements HasMedia
         return static::query()->where('expires_at', '<=', now());
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
     /**
-     * Resolve slug bindings against the active locale's slug, then the fallback
-     * locale's, since slugs are per-locale JSON maps.
-     *
-     * @param  string  $value
-     * @param  string|null  $field
+     * The slug is a per-locale map generated from each locale's `name`. It regenerates only
+     * for the locales whose name changed, probes collisions within one locale (trashed ads
+     * keep theirs reserved) and binds routes by the current locale, then the fallback, then
+     * any locale — so a stale-locale URL still resolves.
      */
-    public function resolveRouteBinding($value, $field = null): ?Model
+    public function slugOptions(): SlugOptions
     {
-        $field ??= $this->getRouteKeyName();
-
-        if ($field !== 'slug') {
-            return parent::resolveRouteBinding($value, $field);
-        }
-
-        $locale = app()->getLocale();
-
-        /** @var string $fallback */
-        $fallback = config('advertisements.fallback_locale', $locale);
-
-        return static::query()
-            ->where('slug->'.$locale, $value)
-            ->when(
-                $locale !== $fallback,
-                fn (Builder $query): Builder => $query->orWhere('slug->'.$fallback, $value),
-            )
-            ->first();
-    }
-
-    /**
-     * Generate the current locale's slug from that locale's name (or the resolved
-     * name fallback) when the name changed or the slug is missing. Other locales'
-     * slugs are left untouched.
-     */
-    protected function syncSlugForCurrentLocale(): void
-    {
-        $locale = app()->getLocale();
-        $slugs = $this->getTranslations('slug');
-        $currentSlug = $slugs[$locale] ?? null;
-
-        $nameDirty = $this->isDirty('name');
-
-        if (! $nameDirty && $currentSlug !== null && $currentSlug !== '') {
-            return;
-        }
-
-        $source = $this->getTranslation('name', $locale) ?? $this->getTranslation('name');
-
-        if ($source === null || $source === '') {
-            return;
-        }
-
-        $this->setTranslation('slug', $locale, $this->generateUniqueSlug($source, $locale));
-    }
-
-    protected function generateUniqueSlug(string $source, string $locale): string
-    {
-        $base = Str::slug($source);
-        $slug = $base;
-        $suffix = 1;
-
-        while ($this->slugExists($slug, $locale)) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
-    }
-
-    /**
-     * Slug uniqueness is per locale: two ads may share a slug across locales but
-     * not within one. The JSON path query resolves portably across SQLite,
-     * MySQL, and Postgres (Laravel emits `json_extract`).
-     */
-    protected function slugExists(string $slug, string $locale): bool
-    {
-        return static::query()
-            ->withTrashed()
-            ->where('slug->'.$locale, $slug)
-            ->when($this->exists, fn (Builder $query) => $query->whereKeyNot($this->getKey()))
-            ->exists();
+        return SlugOptions::make(
+            SlugDefinition::for('slug')
+                ->from('name')
+                ->localized()
+                ->locales(TargetLocales::Source)
+                ->onUpdate(UpdatePolicy::WhenSourceChanges)
+                ->whenEmptySource(EmptySourcePolicy::Skip)
+                ->sequentialSuffix(start: 2)
+                ->includeTrashed()
+                ->fallback(LocaleFallback::Any)
+                ->fallbackLocale(fn (): string => (string) config('advertisements.fallback_locale', 'en'))
+                ->keepHistory((bool) config('advertisements.slugs.history', false))
+                ->routeKey(),
+        );
     }
 
     protected static function newFactory(): AdvertisementFactory

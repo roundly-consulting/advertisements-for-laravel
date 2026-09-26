@@ -42,6 +42,7 @@ it('renders the advertisements section without leaking the host storage or queue
             'EUR',
             'BUFFERED',
             'ON',
+            'Slug history',
         ],
     );
 });

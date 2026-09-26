@@ -79,12 +79,11 @@ ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Advertisements');
  * INSTANCE method, where `static::` binds to the concrete instance's class and is therefore
  * exactly right.
  *
- * Advertisement has three of the latter and none of the former:
- *   - prunable()            — Laravel calls it on the host's own configured instance;
- *   - resolveRouteBinding() — called on the route-bound instance, which the provider already
- *                             resolves through the seam;
- *   - slugExists()          — an instance method on $this.
- * In all three, `static::` resolves to the HOST subclass when a host has swapped the model.
+ * Advertisement has one of the latter and none of the former:
+ *   - prunable() — Laravel calls it on the host's own configured instance.
+ * There, `static::` resolves to the HOST subclass when a host has swapped the model. (Its
+ * route binding and slug probing, the other two instance-method uses, moved into
+ * sluggable-for-laravel's HasSlug, which likewise runs on the bound instance.)
  * Routing them through the seam instead would be neutral at best, and would replace correct
  * late static binding with an indirection written to satisfy a test — the fleet's own lesson
  * being that a test harness does not get to dictate shipped code (the `down()` pin went 30/30
