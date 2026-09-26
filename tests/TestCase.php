@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use RoundlyConsulting\Advertisements\AdvertisementsServiceProvider;
 use RoundlyConsulting\Geolocation\GeolocationServiceProvider;
 use RoundlyConsulting\MediaLibrary\MediaLibraryServiceProvider;
+use RoundlyConsulting\Sluggable\SluggableServiceProvider;
 use RoundlyConsulting\Testing\PackageTestCase;
 
 abstract class TestCase extends PackageTestCase
@@ -23,6 +24,7 @@ abstract class TestCase extends PackageTestCase
         return [
             MediaLibraryServiceProvider::class,
             GeolocationServiceProvider::class,
+            SluggableServiceProvider::class,
             AdvertisementsServiceProvider::class,
         ];
     }
@@ -34,7 +36,8 @@ abstract class TestCase extends PackageTestCase
      * to its own `database/migrations`, so this keeps working when a provider renames a file
      * or composer moves the package between a symlinked path repo and a real VCS install.
      *
-     * media-library ships the `media` table the creative buckets persist into.
+     * media-library ships the `media` table the creative buckets persist into; sluggable ships
+     * the `slug_history` table behind `advertisements.slugs.history`.
      *
      * @return list<class-string<ServiceProvider>|string>
      */
@@ -42,6 +45,7 @@ abstract class TestCase extends PackageTestCase
     {
         return [
             MediaLibraryServiceProvider::class,
+            SluggableServiceProvider::class,
             AdvertisementsServiceProvider::class,
             __DIR__.'/database/migrations',
         ];
@@ -61,6 +65,12 @@ abstract class TestCase extends PackageTestCase
             'media.disk' => 'public',
             'media.image_driver' => 'gd',
             'media.responsive.widths' => [320, 640],
+
+            // The locales the suite writes slugs in. Sluggable builds one unique index per
+            // supported locale at migrate time and walks them for the `Any` binding chain, so
+            // leaving this at the app default (`en` only) would leave `de`/`sk` unindexed and
+            // unbindable — a narrower world than the multi-locale catalog this package serves.
+            'sluggable.locales.supported' => ['en', 'de', 'sk'],
         ];
     }
 }
