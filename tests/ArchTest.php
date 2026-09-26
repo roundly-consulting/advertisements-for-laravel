@@ -6,6 +6,8 @@ use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Category;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Money\Casts\AsMoney;
+use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Testing\Arch\ArchPresets;
 
 /**
@@ -103,7 +105,7 @@ ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Advertisements');
 
 /**
  * The Dependency Policy as a test. No `alsoAllow`: advertisements' `require` ships only
- * php/illuminate/roundly, and the workflow installs test tooling with `--dev`. If it goes red
+ * php/ext-bcmath/illuminate/roundly, and the workflow installs test tooling with `--dev`. If it goes red
  * the graph is wrong — never widen the allow-list to quiet it.
  */
 /**
@@ -118,6 +120,40 @@ ArchPresets::morphColumnsUseTheSeam(__DIR__.'/../database/migrations');
 ArchPresets::runtimeRequireIsWhitelisted(__DIR__.'/../composer.json');
 
 ArchPresets::noDebuggingLeftovers();
+
+/**
+ * Money's public API only. money-for-laravel marks its engine (`MoneyCast`, `IntegerString`,
+ * `Calculator`, `Schema`, …) `@internal`: those may change shape at any time. Advertisements
+ * builds on the documented seams — `Money`, `Currency`, `AsMoney` — and this pins it there.
+ * Every money class named in `src/` or `database/` (import or inline FQCN) is checked, and the
+ * two seams the price column rests on must be among them, so the rule cannot pass over an
+ * empty scan.
+ */
+it('references no @internal money class, only its public api', function (): void {
+    $referenced = [];
+
+    foreach ([__DIR__.'/../src', __DIR__.'/../database'] as $root) {
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+        foreach ($files as $file) {
+            preg_match_all('/RoundlyConsulting\\\\Money\\\\[A-Za-z0-9_\\\\]+/', (string) file_get_contents($file->getPathname()), $matches);
+
+            foreach ($matches[0] as $class) {
+                $referenced[] = ltrim($class, '\\');
+            }
+        }
+    }
+
+    $referenced = array_values(array_unique($referenced));
+
+    expect($referenced)->toContain(Money::class, AsMoney::class);
+
+    foreach ($referenced as $class) {
+        expect(class_exists($class) || interface_exists($class) || enum_exists($class))->toBeTrue("{$class} does not exist")
+            ->and(str_contains((string) (new ReflectionClass($class))->getDocComment(), '@internal'))
+            ->toBeFalse("{$class} is @internal to money-for-laravel");
+    }
+});
 
 /**
  * Bespoke and kept: no preset expresses "this namespace holds traits". The presets replace
