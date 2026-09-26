@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use RoundlyConsulting\Advertisements\AdvertisementsServiceProvider;
 use RoundlyConsulting\Geolocation\GeolocationServiceProvider;
 use RoundlyConsulting\MediaLibrary\MediaLibraryServiceProvider;
+use RoundlyConsulting\Money\MoneyServiceProvider;
 use RoundlyConsulting\Sluggable\SluggableServiceProvider;
 use RoundlyConsulting\Testing\PackageTestCase;
 
@@ -24,6 +25,7 @@ abstract class TestCase extends PackageTestCase
         return [
             MediaLibraryServiceProvider::class,
             GeolocationServiceProvider::class,
+            MoneyServiceProvider::class,
             SluggableServiceProvider::class,
             AdvertisementsServiceProvider::class,
         ];
@@ -37,7 +39,9 @@ abstract class TestCase extends PackageTestCase
      * or composer moves the package between a symlinked path repo and a real VCS install.
      *
      * media-library ships the `media` table the creative buckets persist into; sluggable ships
-     * the `slug_history` table behind `advertisements.slugs.history`.
+     * the `slug_history` table behind `advertisements.slugs.history`. money-for-laravel ships
+     * only the optional exchange-rate table, which advertisements never reads, so it is not
+     * a source — its provider is still booted above for the `$table->money()` macro.
      *
      * @return list<class-string<ServiceProvider>|string>
      */
