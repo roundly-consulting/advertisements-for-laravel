@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Advertisements\Support;
 
 use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
@@ -56,7 +57,10 @@ final class CreativeResolver implements CreativeRenderer
      */
     private function renderTextAd(Advertisement $advertisement, ?Placement $placement, array $attributes): HtmlString
     {
-        $html = $this->views->make($this->textAdView(), [
+        $view = $this->textAdView();
+        $this->assertViewExists($view);
+
+        $html = $this->views->make($view, [
             'advertisement' => $advertisement,
             'placement' => $placement,
             'attributes' => $attributes,
@@ -79,5 +83,19 @@ final class CreativeResolver implements CreativeRenderer
     private function textAdView(): string
     {
         return (string) config('advertisements.media.text_ad_view', 'advertisements::text-ad');
+    }
+
+    /**
+     * The text-ad view is a config value, so it is checked before rendering rather than
+     * trusted: a typo fails with the same "not found" the factory would raise, and the check
+     * is what narrows the name to a view-string for static analysis.
+     *
+     * @phpstan-assert view-string $view
+     */
+    private function assertViewExists(string $view): void
+    {
+        if (! $this->views->exists($view)) {
+            throw new InvalidArgumentException("View [{$view}] not found.");
+        }
     }
 }

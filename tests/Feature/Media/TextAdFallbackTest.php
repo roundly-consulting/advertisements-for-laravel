@@ -105,3 +105,13 @@ it('uses a custom renderer bound in the container', function (): void {
 
     expect((string) $ad->renderCreative($placement))->toBe('<custom-ad></custom-ad>');
 });
+
+it('fails loudly when the configured text-ad view does not exist', function (): void {
+    config()->set('advertisements.media.text_ad_view', 'missing::text-ad');
+
+    $ad = Advertisement::factory()->create(['name' => 'Typo view']);
+    $placement = Placement::factory()->create();
+
+    expect(fn () => $ad->renderCreative($placement))
+        ->toThrow(InvalidArgumentException::class, 'View [missing::text-ad] not found.');
+});
