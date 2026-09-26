@@ -12,7 +12,8 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table): void {
             $table->id();
-            $table->string('slug')->unique();
+            $table->slug('slug');
+            $table->uniqueSlug('slug');
             $table->jsonb('name');
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->jsonb('meta')->nullable();

@@ -127,3 +127,20 @@ it('falls back to the packaged models when the config names a foreign model', fu
         ->and($ad)->not->toBeInstanceOf(CustomAdvertisement::class)
         ->and(Advertisements::recordImpression($ad))->toBeInstanceOf(AdvertisementEvent::class);
 });
+
+it('generates and resolves slugs through the configured models', function (): void {
+    $placement = CustomPlacement::query()->create(['name' => ['en' => 'Footer Strip']]);
+    $category = CustomCategory::query()->create(['name' => ['en' => 'Garden Tools']]);
+
+    $ad = Advertisements::create(AdvertisementData::fromAmount('Boots', 4900, category: 'garden-tools'));
+    Advertisements::attachPlacements($ad, ['footer-strip']);
+
+    expect($placement->slug)->toBe('footer-strip')
+        ->and($category->slug)->toBe('garden-tools')
+        ->and($ad)->toBeInstanceOf(CustomAdvertisement::class)
+        ->and($ad->getTranslation('slug', 'en'))->toBe('boots')
+        ->and($ad->category_id)->toBe($category->getKey())
+        ->and($ad->placements()->first()?->is($placement))->toBeTrue()
+        ->and(Advertisements::query()->whereSlug('boots')->first())->toBeInstanceOf(CustomAdvertisement::class)
+        ->and((new CustomAdvertisement)->getRouteKeyName())->toBe('slug');
+});

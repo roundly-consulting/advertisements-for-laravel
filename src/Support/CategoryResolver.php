@@ -27,7 +27,7 @@ final class CategoryResolver
         }
 
         return CategoryModel::query()
-            ->where('slug', $category)
+            ->whereSlug($category)
             ->value('id');
     }
 }

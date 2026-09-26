@@ -31,7 +31,7 @@ final class PlacementResolver
         }
 
         return PlacementModel::query()
-            ->where('slug', $placement)
+            ->whereSlug($placement)
             ->value('id');
     }
 

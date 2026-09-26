@@ -13,6 +13,12 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\PlacementFactory;
 use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
+use RoundlyConsulting\Sluggable\Concerns\HasSlug;
+use RoundlyConsulting\Sluggable\Contracts\Sluggable;
+use RoundlyConsulting\Sluggable\Definitions\SlugDefinition;
+use RoundlyConsulting\Sluggable\Definitions\SlugOptions;
+use RoundlyConsulting\Sluggable\Enums\ManualSlugPolicy;
+use RoundlyConsulting\Sluggable\Enums\SlugStorage;
 
 /**
  * @property int $id
@@ -28,11 +34,12 @@ use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
  * Not final: `advertisements.placement_model` documents pointing this at your own
  * subclass, which `final` would forbid.
  */
-class Placement extends Model
+class Placement extends Model implements Sluggable
 {
     /** @use HasFactory<PlacementFactory> */
     use HasFactory;
 
+    use HasSlug;
     use HasTranslations;
     use SoftDeletes;
 
@@ -69,9 +76,23 @@ class Placement extends Model
             ->withTimestamps();
     }
 
-    public function getRouteKeyName(): string
+    /**
+     * A placement slug is a code-facing key (`'sidebar'`) and the storage key of every creative
+     * uploaded for it (`creative:{slug}`), so it must never drift: generated from the
+     * fallback-locale name when left empty, never changed afterwards, and a manual value is
+     * kept byte-for-byte — or rejected with SlugAlreadyTakenException when taken.
+     */
+    public function slugOptions(): SlugOptions
     {
-        return 'slug';
+        return SlugOptions::make(
+            SlugDefinition::for('slug')
+                ->from('name')
+                ->sourceLocale((string) config('advertisements.fallback_locale', 'en'))
+                ->storage(SlugStorage::String)
+                ->immutable()
+                ->manual(ManualSlugPolicy::Strict)
+                ->routeKey(),
+        );
     }
 
     protected static function newFactory(): PlacementFactory
