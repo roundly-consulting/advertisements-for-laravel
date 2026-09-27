@@ -18,7 +18,7 @@ use RoundlyConsulting\Testing\Arch\ArchPresets;
  * ValueObjects — which is precisely where the fleet's 7× fatal lives.
  *
  * The old debug rule was also weaker than it read: Pest's arch layer only sees a symbol that
- * exists, and `acme/ray` is not in the graph by policy, so `ray` was filtered out before
+ * exists, and the `ray()` debugger package is not in the graph by policy, so `ray` was filtered out before
  * the ban ran and could never fail. `noDebuggingLeftovers` reads source tokens instead.
  */
 ArchPresets::strictTypes('RoundlyConsulting\Advertisements');
