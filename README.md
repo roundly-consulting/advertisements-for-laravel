@@ -641,8 +641,8 @@ Resolution failures never abort the record — the event is saved with a null co
 
 ## Integrates with
 
-This package builds directly on four sibling roundly-consulting packages (hard `require`s, wired
-per the org's [cross-package integration plan](../docs/cross-package-integration-plan.md)):
+This package builds directly on four sibling roundly-consulting packages, installed
+automatically as dependencies:
 
 - **[media-library-for-laravel](https://github.com/roundly-consulting/media-library-for-laravel)**
   — per-placement creatives, responsive variants, the `display` variant, and the text-ad fallback.
