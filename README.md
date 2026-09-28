@@ -171,7 +171,7 @@ return [
 | `media.display_variant` | `string` | `display` | Variant name fit to the placement dimensions. |
 | `media.use_fallback_bucket` | `bool` | `true` | Try the generic creative bucket before the text ad. |
 | `media.text_ad_view` | `string` | `advertisements::text-ad` | Blade view rendering the text-ad fallback. |
-| `geo.targeting_enabled` | `bool` | `true` (env `ADVERTISEMENTS_GEO_TARGETING`) | Apply geo targeting in `targetedFor()`. |
+| `geo.targeting_enabled` | `bool` | `true` (env `ADVERTISEMENTS_GEO_TARGETING`) | Apply geo targeting in `targetedIn()`. |
 | `geo.untargeted_match` | `bool` | `true` | Ads with no targeting match every viewer. |
 | `geo.match_when_unknown` | `string` | `untargeted_only` | Serving when the viewer is unresolved: `untargeted_only` or `all`. |
 | `geo.stamp_events` | `bool` | `true` (env `ADVERTISEMENTS_GEO_STAMP`) | Stamp the viewer country (+ region/city/coords) onto recorded events. |
@@ -200,8 +200,47 @@ Advertisements::archive($ad);                  // → AdvertisementArchived
 Advertisements::delete($ad);                   // soft delete → AdvertisementDeleted
 ```
 
-The same operations are available as injectable action classes
-(`RoundlyConsulting\Advertisements\Actions\*`), each with a single `execute()` method.
+The whole API at a glance:
+
+| Call | Returns |
+|---|---|
+| `create(AdvertisementData)`, `update($ad, AdvertisementData)` | `Advertisement` |
+| `publish($ad, ?$at)`, `unpublish($ad)`, `expire($ad, ?$at)`, `archive($ad)` | `Advertisement` |
+| `delete($ad)` | `bool` |
+| `query()`, `active()` | `Builder<Advertisement>` |
+| `in($placement)`, `targetedIn($placement, ?$viewer)` | active ads in a placement (geo-aware) |
+| `random(?$placement)` | `?Advertisement` |
+| `render($ad, $placement, array $attributes = [])` | `HtmlString` — the creative or the text ad |
+| `for($ad)->placements()->attach/detach/sync([...])` | `Advertisement` (placements reloaded) |
+| `for($ad)->runsIn($placement)` | `bool` |
+| `for($ad)->track(?$placement)->impression(?ImpressionData)` / `->click(?ImpressionData)` | `?AdvertisementEvent` (null when buffered) |
+
+#### Without the facade
+
+The facade is sugar over `RoundlyConsulting\Advertisements\AdvertisementManager` — inject it
+and call the same methods. Every operation is also an injectable action class
+(`RoundlyConsulting\Advertisements\Actions\*`) with a single `execute()` method; the manager
+resolves them from the container, so a host binding for an action applies to the facade too.
+
+```php
+use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
+use RoundlyConsulting\Advertisements\AdvertisementManager;
+use RoundlyConsulting\Advertisements\Models\Advertisement;
+
+final class LaunchCampaign
+{
+    public function __construct(private AdvertisementManager $ads) {}
+
+    public function __invoke(Advertisement $ad): void
+    {
+        $this->ads->for($ad)->placements()->sync(['sidebar', 'header']);
+        $this->ads->publish($ad);
+    }
+}
+
+// The raw use case:
+app(PublishAdvertisement::class)->execute($ad, now()->addDay());
+```
 
 ### The `AdvertisementData` DTO
 
@@ -370,12 +409,13 @@ use RoundlyConsulting\Advertisements\Models\Placement;
 
 $sidebar = Placement::factory()->create(['slug' => 'sidebar', 'name' => ['en' => 'Sidebar']]);
 
-Advertisements::attachPlacements($ad, ['sidebar', $headerId]); // models, ids, or slugs
-Advertisements::syncPlacements($ad, ['sidebar']);
-Advertisements::detachPlacements($ad, ['sidebar']);
+Advertisements::for($ad)->placements()->attach(['sidebar', $headerId]); // models, ids, or slugs
+Advertisements::for($ad)->placements()->sync(['sidebar']);
+Advertisements::for($ad)->placements()->detach(['sidebar']);
+Advertisements::for($ad)->runsIn('sidebar'); // true
 
 // Active ads in a placement, or one at random:
-Advertisements::for('sidebar')->get();
+Advertisements::in('sidebar')->get();
 Advertisements::random('sidebar');
 
 Advertisement::query()->forPlacement($sidebar)->get(); // model, id, or slug
@@ -391,12 +431,13 @@ denormalized counter, and fire an event:
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 
-Advertisements::recordImpression($ad, 'sidebar');
-Advertisements::recordClick($ad, 'sidebar', new ImpressionData(
+Advertisements::for($ad)->track('sidebar')->impression();
+Advertisements::for($ad)->track('sidebar')->click(new ImpressionData(
     ip: $request->ip(),
     userAgent: $request->userAgent(),
     referrer: $request->headers->get('referer'),
 ));
+Advertisements::for($ad)->track()->impression(); // no placement
 
 $ad->impressions(); // int  (impressions_count)
 $ad->clicks();      // int  (clicks_count)
@@ -404,9 +445,13 @@ $ad->ctr();         // float 0.0–1.0
 $ad->events;        // HasMany<AdvertisementEvent>
 ```
 
+`track($placement)` refuses a placement the ad does not run in (`AdvertisementNotInPlacement`, an
+`AdvertisementException`) — so a forged or stale click URL can't credit a zone the ad was never
+served in. Recording returns the persisted `AdvertisementEvent`; with buffering on it returns
+`null` and runs via `RecordAdvertisementEventJob` on the configured connection/queue.
+
 Listen for `ImpressionRecorded` / `ClickRecorded` (each exposes a public `$event`
-`AdvertisementEvent`). With buffering on, recording returns a `PendingDispatch` and runs via
-`RecordAdvertisementEventJob` on the configured connection/queue.
+`AdvertisementEvent`).
 
 ### Translations
 
@@ -504,8 +549,9 @@ use RoundlyConsulting\Sluggable\Rules\ValidSlug;
 ```php
 $ad->isPublished(); $ad->isActive(); $ad->isExpired(); $ad->isScheduled(); $ad->isArchived();
 
-$ad->publish();   // same action + event as Advertisements::publish($ad)
+$ad->publish();   // sugar for Advertisements::publish($ad) — same manager, same event, seen by the fake
 $ad->unpublish(); $ad->expire(); $ad->archive(); $ad->delete();
+$ad->renderCreative('sidebar'); // sugar for Advertisements::render($ad, 'sidebar')
 
 $ad->price?->add(Money::ofMinor(500, 'EUR')); // money's API; mismatched currencies throw CurrencyMismatch
 ```
@@ -554,21 +600,43 @@ Advertisement::factory()->archived()->create();
 
 ### Testing helpers
 
-`Advertisements::fake()` swaps the manager for a fake that records impressions and clicks in
-memory (no DB writes) and forwards everything else to the real manager:
+`Advertisements::fake()` swaps in `RoundlyConsulting\Advertisements\Testing\AdvertisementsFake`
+— a subtype of `AdvertisementManager`, installed behind the facade **and** in the container, so
+constructor-injected managers and the model methods (`$ad->publish()`, `$ad->delete()`, …) hit it
+too. Lifecycle and placement changes still run against the database (reads and events behave
+normally) and are recorded; tracking is recorded in memory only — no row, no counter, no job — and
+returns `null`. The placement scope is still enforced.
 
 ```php
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
+use RoundlyConsulting\Advertisements\Testing\RecordedEvent;
+use RoundlyConsulting\Advertisements\Testing\RecordedPlacements;
 
 $fake = Advertisements::fake();
 
-Advertisements::recordImpression($ad, 'sidebar');
+Advertisements::for($ad)->track('sidebar')->impression();
+$ad->publish();
 
-$fake->assertImpressionRecorded();
-$fake->assertImpressionRecorded(fn ($e) => $e->ad->is($ad) && $e->placement === 'sidebar');
-$fake->assertClickRecorded();      // optional closure filter
-$fake->assertNothingRecorded();
+$fake->assertImpressionRecorded(fn (RecordedEvent $e) => $e->ad->is($ad) && $e->placement === 'sidebar');
+$fake->assertPublished($ad);
+$fake->assertPlacementsAttached(fn (RecordedPlacements $c) => $c->includes('sidebar'));
+$fake->assertNothingDeleted();
 ```
+
+| Recorded | Assert | Negative |
+|---|---|---|
+| `create` | `assertCreated(Advertisement\|Closure\|null)` | `assertNothingCreated()` |
+| `update` | `assertUpdated(…)` | `assertNothingUpdated()` |
+| `publish` / `$ad->publish()` | `assertPublished(…)` | `assertNothingPublished()` |
+| `unpublish` / `$ad->unpublish()` | `assertUnpublished(…)` | `assertNothingUnpublished()` |
+| `expire` / `$ad->expire()` | `assertExpired(…)` | `assertNothingExpired()` |
+| `archive` / `$ad->archive()` | `assertArchived(…)` | `assertNothingArchived()` |
+| `delete` / `$ad->delete()` | `assertDeleted(…)` | `assertNothingDeleted()` |
+| `for($ad)->placements()->attach()` | `assertPlacementsAttached(Advertisement\|Closure(RecordedPlacements)\|null)` | `assertNothingAttached()` |
+| `for($ad)->placements()->detach()` | `assertPlacementsDetached(…)` | `assertNothingDetached()` |
+| `for($ad)->placements()->sync()` | `assertPlacementsSynced(…)` | `assertNothingSynced()` |
+| `for($ad)->track()->impression()` | `assertImpressionRecorded(Advertisement\|Closure(RecordedEvent)\|null)` | `assertNothingRecorded()` |
+| `for($ad)->track()->click()` | `assertClickRecorded(…)` | `assertNothingRecorded()` |
 
 ### Creatives & media
 
@@ -587,7 +655,8 @@ $ad->creativeUrl('sidebar');                 // display-variant URL, or '' / fal
 $ad->creativeUrl('sidebar', '');             // the original
 
 // Responsive <img> when a creative exists, else the text-ad fallback (name + description + price).
-echo $ad->renderCreative('sidebar', ['class' => 'ad']);
+echo Advertisements::render($ad, 'sidebar', ['class' => 'ad']);
+echo $ad->renderCreative('sidebar', ['class' => 'ad']); // the same, from the model
 ```
 
 The text ad renders through the publishable `advertisements::text-ad` Blade view, so hosts can
@@ -614,7 +683,7 @@ $ad->targeting = new Targeting(
 $ad->save();
 
 // Resolve the viewer from the request IP (geolocation), or pass a Location / null:
-$ads = Advertisements::targetedFor('sidebar', request())->get();
+$ads = Advertisements::targetedIn('sidebar', request())->get();
 
 // Or the model scope directly:
 Advertisement::query()->active()->forPlacement('sidebar')->targetedAt($location)->get();
@@ -632,7 +701,7 @@ reporting:
 ```php
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 
-Advertisements::recordImpression($ad, 'sidebar', new ImpressionData(ip: $request->ip()));
+Advertisements::for($ad)->track('sidebar')->impression(new ImpressionData(ip: $request->ip()));
 
 $ad->impressionsByCountry(); // ['SK' => 1240, 'CZ' => 310]
 $ad->clicksByCountry();      // ['SK' => 58]
