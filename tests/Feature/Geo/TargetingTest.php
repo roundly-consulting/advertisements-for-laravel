@@ -8,7 +8,7 @@ use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Coordinates;
-use RoundlyConsulting\Geolocation\GeolocationManager;
+use RoundlyConsulting\Geolocation\Facades\Geolocation;
 
 function targetedAd(Placement $placement, ?Targeting $targeting = null): Advertisement
 {
@@ -63,7 +63,7 @@ it('honours a radius around a centre point', function (): void {
 });
 
 it('resolves the viewer from a request ip', function (): void {
-    GeolocationManager::fake(['1.2.3.4' => location('SK')]);
+    Geolocation::fake(['1.2.3.4' => location('SK')]);
 
     $ad = targetedAd($this->placement, new Targeting(countries: ['SK']));
     $blocked = targetedAd($this->placement, new Targeting(countries: ['DE']));
@@ -76,7 +76,7 @@ it('resolves the viewer from a request ip', function (): void {
 });
 
 it('serves only untargeted ads when the viewer is unresolved', function (): void {
-    GeolocationManager::fake();
+    Geolocation::fake();
 
     $untargeted = targetedAd($this->placement);
     $targeted = targetedAd($this->placement, new Targeting(countries: ['SK']));
@@ -90,7 +90,7 @@ it('serves only untargeted ads when the viewer is unresolved', function (): void
 
 it('serves all ads when match_when_unknown is all', function (): void {
     config()->set('advertisements.geo.match_when_unknown', 'all');
-    GeolocationManager::fake();
+    Geolocation::fake();
 
     $untargeted = targetedAd($this->placement);
     $targeted = targetedAd($this->placement, new Targeting(countries: ['SK']));

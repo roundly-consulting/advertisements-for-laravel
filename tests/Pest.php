@@ -19,7 +19,7 @@ uses(TestCase::class)->in(
 uses(SwappedModelsTestCase::class)->in('Configured');
 
 /**
- * Build a geolocation Location for tests (seeded into GeolocationManager::fake()).
+ * Build a geolocation Location for tests (seeded into Geolocation::fake()).
  */
 function location(
     string $country,

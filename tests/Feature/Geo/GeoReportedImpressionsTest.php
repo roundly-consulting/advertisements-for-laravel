@@ -6,10 +6,10 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
-use RoundlyConsulting\Geolocation\GeolocationManager;
+use RoundlyConsulting\Geolocation\Facades\Geolocation;
 
 it('stamps the viewer country and coordinates onto an impression', function (): void {
-    GeolocationManager::fake([
+    Geolocation::fake([
         '1.2.3.4' => location('SK', 48.1486, 17.1077, 'Bratislava', 'Bratislavský'),
     ]);
 
@@ -26,7 +26,7 @@ it('stamps the viewer country and coordinates onto an impression', function (): 
 
 it('does not stamp when geo stamping is disabled', function (): void {
     config()->set('advertisements.geo.stamp_events', false);
-    GeolocationManager::fake(['1.2.3.4' => location('SK')]);
+    Geolocation::fake(['1.2.3.4' => location('SK')]);
 
     $ad = Advertisement::factory()->published()->create();
 
@@ -36,7 +36,7 @@ it('does not stamp when geo stamping is disabled', function (): void {
 });
 
 it('records the event without a country when the ip is unresolved', function (): void {
-    GeolocationManager::fake();
+    Geolocation::fake();
 
     $ad = Advertisement::factory()->published()->create();
 
@@ -51,7 +51,7 @@ it('records the event without a country when the ip is unresolved', function ():
 it('stamps geo on the buffered tracking path', function (): void {
     config()->set('advertisements.tracking.buffered', true);
     config()->set('queue.default', 'sync');
-    GeolocationManager::fake(['5.6.7.8' => location('DE', 52.52, 13.405, 'Berlin')]);
+    Geolocation::fake(['5.6.7.8' => location('DE', 52.52, 13.405, 'Berlin')]);
 
     $ad = Advertisement::factory()->published()->create();
 
@@ -61,7 +61,7 @@ it('stamps geo on the buffered tracking path', function (): void {
 });
 
 it('reports impressions and clicks grouped by country', function (): void {
-    GeolocationManager::fake([
+    Geolocation::fake([
         '1.1.1.1' => location('SK'),
         '2.2.2.2' => location('SK'),
         '3.3.3.3' => location('DE'),
