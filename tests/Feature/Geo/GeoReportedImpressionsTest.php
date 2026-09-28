@@ -15,7 +15,7 @@ it('stamps the viewer country and coordinates onto an impression', function (): 
 
     $ad = Advertisement::factory()->published()->create();
 
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '1.2.3.4'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '1.2.3.4'));
 
     $event = AdvertisementEvent::query()->firstOrFail();
 
@@ -30,7 +30,7 @@ it('does not stamp when geo stamping is disabled', function (): void {
 
     $ad = Advertisement::factory()->published()->create();
 
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '1.2.3.4'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '1.2.3.4'));
 
     expect(AdvertisementEvent::query()->firstOrFail()->country_code)->toBeNull();
 });
@@ -40,7 +40,7 @@ it('records the event without a country when the ip is unresolved', function ():
 
     $ad = Advertisement::factory()->published()->create();
 
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '9.9.9.9'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '9.9.9.9'));
 
     $event = AdvertisementEvent::query()->firstOrFail();
 
@@ -55,7 +55,7 @@ it('stamps geo on the buffered tracking path', function (): void {
 
     $ad = Advertisement::factory()->published()->create();
 
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '5.6.7.8'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '5.6.7.8'));
 
     expect(AdvertisementEvent::query()->firstOrFail()->country_code)->toBe('DE');
 });
@@ -69,10 +69,10 @@ it('reports impressions and clicks grouped by country', function (): void {
 
     $ad = Advertisement::factory()->published()->create();
 
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '1.1.1.1'));
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '2.2.2.2'));
-    Advertisements::recordImpression($ad, null, new ImpressionData(ip: '3.3.3.3'));
-    Advertisements::recordClick($ad, null, new ImpressionData(ip: '3.3.3.3'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '1.1.1.1'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '2.2.2.2'));
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '3.3.3.3'));
+    Advertisements::for($ad)->track()->click(new ImpressionData(ip: '3.3.3.3'));
 
     expect($ad->impressionsByCountry())->toBe(['DE' => 1, 'SK' => 2])
         ->and($ad->clicksByCountry())->toBe(['DE' => 1]);

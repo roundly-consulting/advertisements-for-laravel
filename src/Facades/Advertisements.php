@@ -6,14 +6,13 @@ namespace RoundlyConsulting\Advertisements\Facades;
 
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\HtmlString;
+use RoundlyConsulting\Advertisements\AdvertisementHandle;
 use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
-use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
-use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\Testing\AdvertisementsFake;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
@@ -28,34 +27,31 @@ use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
  * @method static bool delete(Advertisement $advertisement)
  * @method static Builder<Advertisement> query()
  * @method static Builder<Advertisement> active()
+ * @method static Builder<Advertisement> in(Placement|int|string $placement)
+ * @method static Builder<Advertisement> targetedIn(Placement|int|string $placement, Request|Location|null $viewer = null)
  * @method static ?Advertisement random(Placement|int|string|null $placement = null)
- * @method static Builder<Advertisement> for(Placement|int|string $placement)
- * @method static Builder<Advertisement> targetedFor(Placement|int|string $placement, Request|Location|null $viewer = null)
- * @method static Advertisement attachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
- * @method static Advertisement detachPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
- * @method static Advertisement syncPlacements(Advertisement $advertisement, iterable<int, Placement|int|string> $placements)
- * @method static AdvertisementEvent|PendingDispatch recordImpression(Advertisement $advertisement, Placement|int|string|null $placement = null, ?ImpressionData $data = null)
- * @method static AdvertisementEvent|PendingDispatch recordClick(Advertisement $advertisement, Placement|int|string|null $placement = null, ?ImpressionData $data = null)
+ * @method static AdvertisementHandle for(Advertisement $advertisement)
+ * @method static HtmlString render(Advertisement $advertisement, Placement|int|string $placement, array<string, string> $attributes = [])
  *
  * @see AdvertisementManager
  */
 final class Advertisements extends Facade
 {
     /**
-     * Swap the manager for a fake that records impressions and clicks in memory
-     * (forwarding everything else to the real manager) and return it so tests can
-     * assert on tracking without hitting the database.
+     * Swap in a recording fake — behind the facade and in the container, so injected
+     * managers and `Advertisement` model methods hit it too. Lifecycle and placement
+     * changes still run; tracking is recorded in memory only. Calling it again returns
+     * the fake already installed.
      */
     public static function fake(): AdvertisementsFake
     {
-        $manager = self::getFacadeRoot();
+        $current = self::getFacadeRoot();
 
-        $fake = $manager instanceof AdvertisementsFake
-            ? $manager
-            : new AdvertisementsFake($manager);
+        $fake = $current instanceof AdvertisementsFake
+            ? $current
+            : self::getFacadeApplication()->make(AdvertisementsFake::class);
 
         self::swap($fake);
-        self::getFacadeApplication()->instance(AdvertisementManager::class, $fake);
 
         return $fake;
     }

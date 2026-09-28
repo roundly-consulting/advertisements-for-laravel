@@ -22,6 +22,10 @@ use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
  * The single code path that persists a tracking event. Both the synchronous and
  * the buffered/queued recorders delegate here, so the event row, the
  * denormalized counter, and the dispatched domain event stay consistent.
+ *
+ * @internal Building block of RecordImpression / RecordClick (via EventRecorder) and the
+ *           buffered RecordAdvertisementEventJob. Record through
+ *           `Advertisements::for($ad)->track()` instead.
  */
 final class RecordAdvertisementEvent
 {

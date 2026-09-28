@@ -11,6 +11,7 @@ use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Advertisements\Support\CreativeResolver;
 use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
+use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
@@ -36,6 +37,10 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(AdvertisementManager::class);
         $this->app->bind(CreativeRenderer::class, CreativeResolver::class);
+
+        // One resolver per request/job, so serve-time targeting and impression stamping
+        // share its per-IP memo without leaking it across Octane requests or queue jobs.
+        $this->app->scoped(ViewerLocationResolver::class);
     }
 
     public function boot(): void

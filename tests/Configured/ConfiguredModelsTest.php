@@ -54,7 +54,7 @@ it('creates, categorises and reads back the configured advertisement model', fun
 it('attaches placements through the pivot the migration actually created', function (): void {
     $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
-    Advertisements::attachPlacements($ad, ['sidebar']);
+    Advertisements::for($ad)->placements()->attach(['sidebar']);
 
     expect($ad->placements()->getTable())->toBe('advertisement_placement')
         ->and($ad->placements()->getForeignPivotKeyName())->toBe('advertisement_id')
@@ -70,7 +70,9 @@ it('attaches placements through the pivot the migration actually created', funct
 it('records tracking events onto the packaged foreign key', function (): void {
     $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
-    $event = Advertisements::recordImpression($ad, 'sidebar');
+    Advertisements::for($ad)->placements()->attach(['sidebar']);
+
+    $event = Advertisements::for($ad)->track('sidebar')->impression();
 
     expect($event)->toBeInstanceOf(CustomAdvertisementEvent::class)
         ->and($ad->events()->getForeignKeyName())->toBe('advertisement_id')
@@ -106,8 +108,9 @@ it('reads a category tree and its advertisements through the configured model', 
 it('reports per-country counts for the configured models', function (): void {
     $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
 
-    Advertisements::recordImpression($ad, 'sidebar');
-    Advertisements::recordClick($ad, 'sidebar');
+    Advertisements::for($ad)->placements()->attach(['sidebar']);
+    Advertisements::for($ad)->track('sidebar')->impression();
+    Advertisements::for($ad)->track('sidebar')->click();
 
     expect($ad->impressions())->toBe(1)
         ->and($ad->clicks())->toBe(1)
@@ -125,7 +128,7 @@ it('falls back to the packaged models when the config names a foreign model', fu
 
     expect($ad)->toBeInstanceOf(Advertisement::class)
         ->and($ad)->not->toBeInstanceOf(CustomAdvertisement::class)
-        ->and(Advertisements::recordImpression($ad))->toBeInstanceOf(AdvertisementEvent::class);
+        ->and(Advertisements::for($ad)->track()->impression())->toBeInstanceOf(AdvertisementEvent::class);
 });
 
 it('generates and resolves slugs through the configured models', function (): void {
@@ -133,7 +136,7 @@ it('generates and resolves slugs through the configured models', function (): vo
     $category = CustomCategory::query()->create(['name' => ['en' => 'Garden Tools']]);
 
     $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, category: 'garden-tools'));
-    Advertisements::attachPlacements($ad, ['footer-strip']);
+    Advertisements::for($ad)->placements()->attach(['footer-strip']);
 
     expect($placement->slug)->toBe('footer-strip')
         ->and($category->slug)->toBe('garden-tools')

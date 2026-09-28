@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Category;
@@ -32,6 +33,8 @@ ArchPresets::strictTypes('RoundlyConsulting\Advertisements');
  *  - the event classes, left open so a host swapping a model can carry its own payload.
  */
 ArchPresets::finalByDefault('RoundlyConsulting\Advertisements', [
+    // The facade root: AdvertisementsFake extends it so injected managers get the fake.
+    AdvertisementManager::class,
     Advertisement::class,
     Placement::class,
     Category::class,
@@ -120,6 +123,13 @@ ArchPresets::morphColumnsUseTheSeam(__DIR__.'/../database/migrations');
 ArchPresets::runtimeRequireIsWhitelisted(__DIR__.'/../composer.json');
 
 ArchPresets::noDebuggingLeftovers();
+
+/**
+ * Model methods (`$ad->publish()`, `->delete()`, `->renderCreative()`) and the concerns
+ * delegate to AdvertisementManager, never to an action — so `Advertisements::fake()`
+ * sees every call.
+ */
+ArchPresets::modelsGoThroughTheFacade('RoundlyConsulting\Advertisements');
 
 /**
  * Money's public API only. money-for-laravel marks its engine (`MoneyCast`, `IntegerString`,

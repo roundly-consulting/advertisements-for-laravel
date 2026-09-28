@@ -30,8 +30,8 @@ beforeEach(function (): void {
 it('returns untargeted ads for any viewer and a null viewer', function (): void {
     $ad = targetedAd($this->placement);
 
-    $sk = Advertisements::targetedFor($this->placement, location('SK'))->pluck('id');
-    $none = Advertisements::targetedFor($this->placement, null)->pluck('id');
+    $sk = Advertisements::targetedIn($this->placement, location('SK'))->pluck('id');
+    $none = Advertisements::targetedIn($this->placement, null)->pluck('id');
 
     expect($sk)->toContain($ad->id)->and($none)->toContain($ad->id);
 });
@@ -39,15 +39,15 @@ it('returns untargeted ads for any viewer and a null viewer', function (): void 
 it('honours a country allow list', function (): void {
     $ad = targetedAd($this->placement, new Targeting(countries: ['SK']));
 
-    expect(Advertisements::targetedFor($this->placement, location('SK'))->pluck('id'))->toContain($ad->id)
-        ->and(Advertisements::targetedFor($this->placement, location('DE'))->pluck('id'))->not->toContain($ad->id);
+    expect(Advertisements::targetedIn($this->placement, location('SK'))->pluck('id'))->toContain($ad->id)
+        ->and(Advertisements::targetedIn($this->placement, location('DE'))->pluck('id'))->not->toContain($ad->id);
 });
 
 it('honours a country deny list', function (): void {
     $ad = targetedAd($this->placement, new Targeting(excludeCountries: ['DE']));
 
-    expect(Advertisements::targetedFor($this->placement, location('DE'))->pluck('id'))->not->toContain($ad->id)
-        ->and(Advertisements::targetedFor($this->placement, location('SK'))->pluck('id'))->toContain($ad->id);
+    expect(Advertisements::targetedIn($this->placement, location('DE'))->pluck('id'))->not->toContain($ad->id)
+        ->and(Advertisements::targetedIn($this->placement, location('SK'))->pluck('id'))->toContain($ad->id);
 });
 
 it('honours a radius around a centre point', function (): void {
@@ -58,8 +58,8 @@ it('honours a radius around a centre point', function (): void {
     $near = location('SK', 48.2190, 17.4000);
     $far = location('CZ', 50.0755, 14.4378);
 
-    expect(Advertisements::targetedFor($this->placement, $near)->pluck('id'))->toContain($ad->id)
-        ->and(Advertisements::targetedFor($this->placement, $far)->pluck('id'))->not->toContain($ad->id);
+    expect(Advertisements::targetedIn($this->placement, $near)->pluck('id'))->toContain($ad->id)
+        ->and(Advertisements::targetedIn($this->placement, $far)->pluck('id'))->not->toContain($ad->id);
 });
 
 it('resolves the viewer from a request ip', function (): void {
@@ -70,7 +70,7 @@ it('resolves the viewer from a request ip', function (): void {
 
     $request = Request::create('/', 'GET', server: ['REMOTE_ADDR' => '1.2.3.4']);
 
-    $ids = Advertisements::targetedFor($this->placement, $request)->pluck('id');
+    $ids = Advertisements::targetedIn($this->placement, $request)->pluck('id');
 
     expect($ids)->toContain($ad->id)->not->toContain($blocked->id);
 });
@@ -83,7 +83,7 @@ it('serves only untargeted ads when the viewer is unresolved', function (): void
 
     $request = Request::create('/', 'GET', server: ['REMOTE_ADDR' => '9.9.9.9']);
 
-    $ids = Advertisements::targetedFor($this->placement, $request)->pluck('id');
+    $ids = Advertisements::targetedIn($this->placement, $request)->pluck('id');
 
     expect($ids)->toContain($untargeted->id)->not->toContain($targeted->id);
 });
@@ -95,18 +95,18 @@ it('serves all ads when match_when_unknown is all', function (): void {
     $untargeted = targetedAd($this->placement);
     $targeted = targetedAd($this->placement, new Targeting(countries: ['SK']));
 
-    $ids = Advertisements::targetedFor($this->placement, null)->pluck('id');
+    $ids = Advertisements::targetedIn($this->placement, null)->pluck('id');
 
     expect($ids)->toContain($untargeted->id)->toContain($targeted->id);
 });
 
-it('is identical to for() when targeting is disabled', function (): void {
+it('is identical to in() when targeting is disabled', function (): void {
     config()->set('advertisements.geo.targeting_enabled', false);
 
     $untargeted = targetedAd($this->placement);
     $targeted = targetedAd($this->placement, new Targeting(countries: ['SK']));
 
-    $ids = Advertisements::targetedFor($this->placement, location('DE'))->pluck('id');
+    $ids = Advertisements::targetedIn($this->placement, location('DE'))->pluck('id');
 
     expect($ids)->toContain($untargeted->id)->toContain($targeted->id);
 });

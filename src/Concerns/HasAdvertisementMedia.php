@@ -7,7 +7,7 @@ namespace RoundlyConsulting\Advertisements\Concerns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
-use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
+use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\MediaLibrary\Buckets\MediaBucket;
@@ -113,12 +113,13 @@ trait HasAdvertisementMedia
     /**
      * Render the creative for a placement: a responsive `<img>` when an image creative exists,
      * otherwise the text-ad fallback built from the ad's own name/description/CTA.
+     * Sugar for `Advertisements::render($this, $placement, $attributes)`.
      *
      * @param  array<string, string>  $attributes
      */
     public function renderCreative(Placement|int|string $placement, array $attributes = []): HtmlString
     {
-        return app(CreativeRenderer::class)->render($this, $placement, $attributes);
+        return app(AdvertisementManager::class)->render($this, $placement, $attributes);
     }
 
     public function creativeBucketName(Placement|int|string $placement): string

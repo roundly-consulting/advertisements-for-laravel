@@ -17,11 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use RoundlyConsulting\Advertisements\Actions\ArchiveAdvertisement;
-use RoundlyConsulting\Advertisements\Actions\DeleteAdvertisement;
-use RoundlyConsulting\Advertisements\Actions\ExpireAdvertisement;
-use RoundlyConsulting\Advertisements\Actions\PublishAdvertisement;
-use RoundlyConsulting\Advertisements\Actions\UnpublishAdvertisement;
+use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\Casts\TargetingCast;
 use RoundlyConsulting\Advertisements\Concerns\HasAdvertisementMedia;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
@@ -189,46 +185,62 @@ class Advertisement extends Model implements HasMedia, Sluggable
         return $this->status === AdvertisementStatus::Archived;
     }
 
+    /**
+     * Sugar for `Advertisements::publish($this, $at)` — goes through the manager, so
+     * `Advertisements::fake()` records it.
+     */
     public function publish(?CarbonInterface $at = null): static
     {
-        app(PublishAdvertisement::class)->execute($this, $at);
-
-        return $this;
-    }
-
-    public function unpublish(): static
-    {
-        app(UnpublishAdvertisement::class)->execute($this);
-
-        return $this;
-    }
-
-    public function expire(?CarbonInterface $at = null): static
-    {
-        app(ExpireAdvertisement::class)->execute($this, $at);
-
-        return $this;
-    }
-
-    public function archive(): static
-    {
-        app(ArchiveAdvertisement::class)->execute($this);
+        app(AdvertisementManager::class)->publish($this, $at);
 
         return $this;
     }
 
     /**
-     * Route deletion through the package action so the soft-delete and the
-     * AdvertisementDeleted event fire whether the model or the action is called.
+     * Sugar for `Advertisements::unpublish($this)`.
+     */
+    public function unpublish(): static
+    {
+        app(AdvertisementManager::class)->unpublish($this);
+
+        return $this;
+    }
+
+    /**
+     * Sugar for `Advertisements::expire($this, $at)`.
+     */
+    public function expire(?CarbonInterface $at = null): static
+    {
+        app(AdvertisementManager::class)->expire($this, $at);
+
+        return $this;
+    }
+
+    /**
+     * Sugar for `Advertisements::archive($this)`.
+     */
+    public function archive(): static
+    {
+        app(AdvertisementManager::class)->archive($this);
+
+        return $this;
+    }
+
+    /**
+     * Route deletion through the manager (and its delete action) so the soft-delete
+     * and the AdvertisementDeleted event fire — and the fake records it — whichever
+     * way the ad is deleted.
      */
     public function delete(): bool
     {
-        return app(DeleteAdvertisement::class)->execute($this);
+        return app(AdvertisementManager::class)->delete($this);
     }
 
     /**
-     * The underlying Eloquent (soft-)delete, bypassing the action override so
-     * {@see DeleteAdvertisement} can delete without recursing.
+     * The underlying Eloquent (soft-)delete, bypassing the override above so the
+     * delete action can delete without recursing.
+     *
+     * @internal
      */
     public function performModelDelete(): bool
     {
