@@ -52,8 +52,8 @@ final class RecordAdvertisementEvent
         $meta = $data?->toMeta() ?? [];
         $location = $this->resolveLocation($data);
 
-        // Only a meaningful location (a resolved country) is stamped; the geolocation
-        // default/last-resort provider yields an empty country we treat as unresolved.
+        // Only a resolved country is stamped. An unresolvable IP comes back null, and a rough
+        // IP match may still place the viewer without a country — neither is stamped.
         if ($location instanceof Location && $location->countryIsoCode !== '') {
             $event->country_code = $location->countryIsoCode;
             $meta = [...$meta, ...$this->locationMeta($location)];
