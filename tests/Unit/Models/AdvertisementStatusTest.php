@@ -73,3 +73,33 @@ it('treats a publish instant exactly at now as published', function (): void {
 
     expect($advertisement->status)->toBe(AdvertisementStatus::Published);
 });
+
+it('keeps status and the is helpers fresh on one instance across lifecycle changes', function (): void {
+    $advertisement = Advertisement::factory()->create();
+
+    expect($advertisement->status)->toBe(AdvertisementStatus::Draft);
+
+    $advertisement->publish();
+
+    expect($advertisement->status)->toBe(AdvertisementStatus::Published)
+        ->and($advertisement->isPublished())->toBeTrue();
+
+    $advertisement->archive();
+
+    expect($advertisement->status)->toBe(AdvertisementStatus::Archived)
+        ->and($advertisement->isArchived())->toBeTrue()
+        ->and($advertisement->isPublished())->toBeFalse();
+});
+
+it('re-reads the time overlay on every access instead of caching it', function (): void {
+    $advertisement = Advertisement::factory()->published()->create(['expires_at' => now()->addMinutes(5)]);
+
+    expect($advertisement->status)->toBe(AdvertisementStatus::Published)
+        ->and($advertisement->isActive())->toBeTrue();
+
+    Carbon::setTestNow(now()->addMinutes(10));
+
+    expect($advertisement->status)->toBe(AdvertisementStatus::Expired)
+        ->and($advertisement->isExpired())->toBeTrue()
+        ->and($advertisement->isActive())->toBeFalse();
+});

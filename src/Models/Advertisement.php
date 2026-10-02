@@ -277,11 +277,15 @@ class Advertisement extends Model implements HasMedia, Sluggable
      * Effective lifecycle status: the stored `status` column, with time-based
      * expiry overlaid so a live ad past its `expires_at` reads as Expired.
      *
+     * Never object-cached: the lifecycle actions write the raw column, and the overlay
+     * depends on the clock, so every read is recomputed.
+     *
      * @return Attribute<AdvertisementStatus, never>
      */
     protected function status(): Attribute
     {
-        return Attribute::get(fn (mixed $value): AdvertisementStatus => $this->resolveStatus($value));
+        return Attribute::get(fn (mixed $value): AdvertisementStatus => $this->resolveStatus($value))
+            ->withoutObjectCaching();
     }
 
     /**
