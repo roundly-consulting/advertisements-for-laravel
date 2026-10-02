@@ -245,7 +245,9 @@ app(PublishAdvertisement::class)->execute($ad, now()->addDay());
 ### The `AdvertisementData` DTO
 
 Both `create` and `update` take an `AdvertisementData`. Only `name` is required; `price` is a
-nullable `RoundlyConsulting\Money\Money` (a price-less ad passes `price: null` or omits it):
+nullable `RoundlyConsulting\Money\Money` (a price-less ad passes `price: null` or omits it). On
+create an omitted argument is simply empty; on update it means "keep the stored value" (see
+[Updating an advertisement](#updating-an-advertisement)):
 
 ```php
 use Illuminate\Support\Collection;
@@ -329,9 +331,15 @@ $ad = Advertisements::update($ad, new AdvertisementData(
 ));
 ```
 
-Passing no `author` on update dissociates any existing author. A price in another currency
-re-denominates the ad (the action writes the `currency` column first); `price: null` clears the
-amount and leaves `currency` as it was.
+`update()` changes only the fields you pass. `name` is always required; every argument you
+**leave out** keeps the ad's stored value, so the price cut above leaves the description,
+category, meta, author, placements and the `publishedAt` / `expiresAt` dates alone and a live ad
+stays live. Pass an argument as an explicit `null` to **clear** it: `author: null` dissociates
+the author, `category: null` uncategorises the ad, `publishedAt: null` takes it back to draft.
+`fromMinor()` / `fromDecimal()` follow the same rule for their optional arguments.
+
+A price in another currency re-denominates the ad (the action writes the `currency` column
+first); `price: null` clears the amount and leaves `currency` as it was.
 
 ### Status
 

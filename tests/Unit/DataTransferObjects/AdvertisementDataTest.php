@@ -144,3 +144,27 @@ it('accepts a category model, id or slug', function (): void {
         ->and(AdvertisementData::fromMinor(name: 'Ad', minor: 1, category: 'bikes')->category)
         ->toBe('bikes');
 });
+
+it('tells an omitted field from an explicit null', function (): void {
+    $data = new AdvertisementData(name: 'Ad', description: null);
+
+    expect($data->provides('name'))->toBeTrue()
+        ->and($data->provides('description'))->toBeTrue()
+        ->and($data->description)->toBeNull()
+        ->and($data->provides('price'))->toBeFalse()
+        ->and($data->provides('category'))->toBeFalse()
+        ->and($data->provides('author'))->toBeFalse()
+        ->and($data->provides('meta'))->toBeFalse()
+        ->and($data->provides('publishedAt'))->toBeFalse()
+        ->and($data->provides('expiresAt'))->toBeFalse()
+        ->and($data->provides('nonsense'))->toBeFalse();
+});
+
+it('provides the price from a factory and forwards only the passed optional fields', function (): void {
+    $data = AdvertisementData::fromDecimal(name: 'Ad', amount: '1.10', expiresAt: null);
+
+    expect($data->provides('price'))->toBeTrue()
+        ->and($data->provides('expiresAt'))->toBeTrue()
+        ->and($data->provides('category'))->toBeFalse()
+        ->and(AdvertisementData::fromMinor(name: 'Ad', minor: 110)->provides('description'))->toBeFalse();
+});
