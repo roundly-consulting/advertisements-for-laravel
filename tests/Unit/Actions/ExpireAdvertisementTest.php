@@ -40,3 +40,32 @@ it('sets a future expiry without flipping status yet', function (): void {
 
     Carbon::setTestNow();
 });
+
+it('records the expiry of an archived ad but leaves it archived', function (): void {
+    Carbon::setTestNow('2024-01-10 12:00:00');
+
+    $advertisement = Advertisement::factory()->published()->archived()->create();
+
+    app(ExpireAdvertisement::class)->execute($advertisement);
+
+    expect($advertisement->fresh()->getRawOriginal('status'))->toBe('archived')
+        ->and($advertisement->fresh()->expires_at?->toDateTimeString())->toBe('2024-01-10 12:00:00')
+        ->and($advertisement->isArchived())->toBeTrue()
+        ->and(Advertisement::query()->archived()->pluck('id')->all())->toBe([$advertisement->id]);
+
+    Carbon::setTestNow();
+});
+
+it('lifts a stale expired column when the expiry moves into the future', function (): void {
+    Carbon::setTestNow('2024-01-10 12:00:00');
+
+    $advertisement = Advertisement::factory()->published()->create();
+    app(ExpireAdvertisement::class)->execute($advertisement);
+
+    app(ExpireAdvertisement::class)->execute($advertisement, now()->addWeek());
+
+    expect($advertisement->fresh()->getRawOriginal('status'))->toBe('published')
+        ->and($advertisement->status)->toBe(AdvertisementStatus::Published);
+
+    Carbon::setTestNow();
+});
