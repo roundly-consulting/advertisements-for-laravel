@@ -11,8 +11,8 @@ use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 
 /**
  * An advertisement's geo-targeting rules: allowed/blocked countries and an optional
- * radius around a centre point. An empty value object (no rules) means "global" — the
- * ad targets every viewer.
+ * radius around a centre point. Every rule set must hold for a viewer to match. An empty
+ * value object (no rules) means "global" — the cast stores it as no targeting at all.
  *
  * @implements Arrayable<string, mixed>
  */
@@ -46,57 +46,107 @@ final readonly class Targeting implements Arrayable, JsonSerializable
         );
     }
 
+    /**
+     * Whether no rule is set: no country list and no radius (a centre without a radius, or a
+     * radius without a centre, is not a rule). An empty targeting is stored as untargeted.
+     */
     public function isEmpty(): bool
     {
         return $this->countries === []
             && $this->excludeCountries === []
-            && $this->center === null;
+            && ! $this->hasRadius();
     }
 
     /**
-     * Whether a fully-resolved viewer location satisfies these rules (country allow/deny
-     * plus the radius, when both a centre and radius are set).
+     * Whether the viewer satisfies every rule. The viewer is a resolved Location, bare
+     * Coordinates, or an ISO country code.
+     *
+     * A rule needs a fact about the viewer: the country lists need a country, the radius needs
+     * coordinates. When the viewer lacks it (a radius for a viewer known only by country, a
+     * country list for bare coordinates or a Location without a country), the rule cannot be
+     * checked and counts as met only when `$unknownMatches` — the package passes
+     * `geo.match_when_unknown === 'all'`.
      */
-    public function matches(Location $location): bool
+    public function matches(Location|Coordinates|string $viewer, bool $unknownMatches = false): bool
     {
-        if (! $this->matchesCountry($location->countryIsoCode)) {
+        return $this->countryRulesMet(self::countryOf($viewer), $unknownMatches)
+            && $this->radiusRuleMet(self::coordinatesOf($viewer), $unknownMatches);
+    }
+
+    /**
+     * Whether the viewer tells targeting anything: a country, or coordinates. A Location with
+     * neither (no country, 0,0) or an empty country code is an unknown viewer.
+     */
+    public static function canPlace(Location|Coordinates|string|null $viewer): bool
+    {
+        return $viewer !== null
+            && (self::countryOf($viewer) !== null || self::coordinatesOf($viewer) !== null);
+    }
+
+    private function hasRadius(): bool
+    {
+        return $this->center !== null && $this->radiusKm !== null;
+    }
+
+    private function countryRulesMet(?string $country, bool $unknownMatches): bool
+    {
+        if ($this->countries === [] && $this->excludeCountries === []) {
+            return true;
+        }
+
+        if ($country === null) {
+            return $unknownMatches;
+        }
+
+        if (in_array($country, array_map(strtoupper(...), $this->excludeCountries), true)) {
             return false;
         }
 
-        if ($this->center !== null && $this->radiusKm !== null) {
-            return $this->center->near($location->coordinates(), $this->radiusKm);
-        }
-
-        return true;
+        return $this->countries === []
+            || in_array($country, array_map(strtoupper(...), $this->countries), true);
     }
 
-    /**
-     * Whether a bare coordinate satisfies the radius (country rules are skipped — unknown).
-     */
-    public function matchesCoordinates(Coordinates $coordinates): bool
+    private function radiusRuleMet(?Coordinates $coordinates, bool $unknownMatches): bool
     {
         if ($this->center === null || $this->radiusKm === null) {
             return true;
         }
 
+        if ($coordinates === null) {
+            return $unknownMatches;
+        }
+
         return $this->center->near($coordinates, $this->radiusKm);
     }
 
-    public function matchesCountry(string $country): bool
+    private static function countryOf(Location|Coordinates|string $viewer): ?string
     {
-        $country = strtoupper($country);
-        $allowed = array_map(strtoupper(...), $this->countries);
-        $blocked = array_map(strtoupper(...), $this->excludeCountries);
+        $country = match (true) {
+            $viewer instanceof Location => $viewer->countryIsoCode,
+            $viewer instanceof Coordinates => '',
+            default => $viewer,
+        };
 
-        if ($blocked !== [] && in_array($country, $blocked, true)) {
-            return false;
+        $country = strtoupper(trim($country));
+
+        return $country === '' ? null : $country;
+    }
+
+    /**
+     * A Location at 0,0 has no coordinates — geolocation's own marker for "not placed" —
+     * while bare Coordinates are always taken as given.
+     */
+    private static function coordinatesOf(Location|Coordinates|string $viewer): ?Coordinates
+    {
+        if ($viewer instanceof Coordinates) {
+            return $viewer;
         }
 
-        if ($allowed !== [] && ! in_array($country, $allowed, true)) {
-            return false;
+        if (! $viewer instanceof Location || ($viewer->latitude === 0.0 && $viewer->longitude === 0.0)) {
+            return null;
         }
 
-        return true;
+        return $viewer->coordinates();
     }
 
     /**

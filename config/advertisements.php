@@ -176,8 +176,11 @@ return [
     | region/city/coords (in the event meta) for per-country reporting.
     |
     | "match_when_unknown" controls serving when the viewer location cannot be
-    | resolved: "untargeted_only" serves only ads with no targeting, "all" serves
-    | every active ad regardless of targeting.
+    | resolved (or its lookup fails): "untargeted_only" serves only ads with no
+    | targeting, "all" serves every active ad regardless of targeting. It also
+    | decides a rule the viewer lacks the fact for — a radius for a viewer known
+    | only by country, a country list for one known only by coordinates: it
+    | fails under "untargeted_only" and passes under "all".
     |
     */
 

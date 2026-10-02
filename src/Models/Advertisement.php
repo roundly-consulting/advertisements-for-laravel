@@ -376,20 +376,22 @@ class Advertisement extends Model implements HasMedia, Sluggable
     /**
      * Constrain to ads served to a viewer's location: untargeted ads (when
      * `geo.untargeted_match`) plus targeted ads whose country/radius rules the viewer
-     * satisfies. A null/unresolved viewer serves only untargeted ads, or every ad, per
-     * `geo.match_when_unknown`. Targeting is evaluated precisely in PHP (exact Haversine)
-     * over the candidate set already constrained by the surrounding query.
+     * satisfies. An unknown viewer — null, an empty country code, or a Location with neither a
+     * country nor coordinates — is served only untargeted ads, or every ad, per
+     * `geo.match_when_unknown`; the same setting decides a rule the viewer lacks the fact for
+     * (see {@see Targeting::matches()}). Targeting is evaluated precisely in PHP (exact
+     * Haversine) over the candidate set already constrained by the surrounding query.
      *
      * @param  Builder<static>  $query
      */
     public function scopeTargetedAt(Builder $query, Location|Coordinates|string|null $viewer): void
     {
-        if ($viewer === null) {
-            if (config('advertisements.geo.match_when_unknown', 'untargeted_only') === 'all') {
-                return;
-            }
+        $unknownMatches = config('advertisements.geo.match_when_unknown', 'untargeted_only') === 'all';
 
-            $query->whereNull('targeting');
+        if ($viewer === null || ! Targeting::canPlace($viewer)) {
+            if (! $unknownMatches) {
+                $query->whereNull('targeting');
+            }
 
             return;
         }
@@ -397,7 +399,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
         $matched = (clone $query)
             ->whereNotNull('targeting')
             ->get(['id', 'targeting'])
-            ->filter(fn (self $ad): bool => $ad->targeting !== null && $this->viewerMatches($ad->targeting, $viewer))
+            ->filter(fn (self $ad): bool => $ad->targeting !== null && $ad->targeting->matches($viewer, $unknownMatches))
             ->modelKeys();
 
         $untargetedMatch = (bool) config('advertisements.geo.untargeted_match', true);
@@ -409,15 +411,6 @@ class Advertisement extends Model implements HasMedia, Sluggable
 
             $query->orWhereIn('id', $matched);
         });
-    }
-
-    private function viewerMatches(Targeting $targeting, Location|Coordinates|string $viewer): bool
-    {
-        return match (true) {
-            $viewer instanceof Location => $targeting->matches($viewer),
-            $viewer instanceof Coordinates => $targeting->matchesCoordinates($viewer),
-            default => $targeting->matchesCountry($viewer),
-        };
     }
 
     /**

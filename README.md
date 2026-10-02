@@ -145,7 +145,7 @@ return [
     'geo' => [
         'targeting_enabled' => env('ADVERTISEMENTS_GEO_TARGETING', true),
         'untargeted_match' => true,                 // ads with no targeting match every viewer
-        'match_when_unknown' => 'untargeted_only',  // unresolved viewer: 'untargeted_only' | 'all'
+        'match_when_unknown' => 'untargeted_only',  // unknown viewer / unknown fact: 'untargeted_only' | 'all'
         'stamp_events' => env('ADVERTISEMENTS_GEO_STAMP', true),
     ],
 ];
@@ -173,7 +173,7 @@ return [
 | `media.text_ad_view` | `string` | `advertisements::text-ad` | Blade view rendering the text-ad fallback. |
 | `geo.targeting_enabled` | `bool` | `true` (env `ADVERTISEMENTS_GEO_TARGETING`) | Apply geo targeting in `targetedIn()`. |
 | `geo.untargeted_match` | `bool` | `true` | Ads with no targeting match every viewer. |
-| `geo.match_when_unknown` | `string` | `untargeted_only` | Serving when the viewer is unresolved: `untargeted_only` or `all`. |
+| `geo.match_when_unknown` | `string` | `untargeted_only` | What an unknown viewer gets — `untargeted_only` or `all` — and whether a rule the viewer lacks the country or coordinates for fails or passes (see [Geo-targeting](#geo-targeting)). |
 | `geo.stamp_events` | `bool` | `true` (env `ADVERTISEMENTS_GEO_STAMP`) | Stamp the viewer country (+ region/city/coords) onto recorded events. |
 
 ## Usage
@@ -709,8 +709,23 @@ $ads = Advertisements::targetedIn('sidebar', request())->get();
 Advertisement::query()->active()->forPlacement('sidebar')->targetedAt($location)->get();
 ```
 
-Untargeted ads match every viewer (configurable). When the viewer cannot be resolved, only
-untargeted ads are served (or all, per `geo.match_when_unknown`).
+An ad matches when the viewer satisfies **every** rule it sets: the allow/deny lists check the
+viewer's country, the radius checks the viewer's coordinates. Ads with no targeting (or an
+empty `new Targeting()`, which is stored as no targeting) match every viewer while
+`geo.untargeted_match` is on.
+
+The viewer can be a `Location`, bare `Coordinates`, an ISO country code, a `Request` (resolved
+from its IP) or `null`. What happens when something about the viewer is unknown is decided by
+`geo.match_when_unknown`:
+
+| The viewer is… | `untargeted_only` (default) | `all` |
+|---|---|---|
+| unknown — `null`, an IP geolocation cannot place (or whose lookup throws), an empty country code, a `Location` with neither country nor coordinates | only untargeted ads | every ad |
+| known only by country (`'US'`, a `Location` at 0,0) | a radius rule fails | a radius rule passes |
+| known only by coordinates (`Coordinates`, a `Location` without a country) | a country list fails | a country list passes |
+
+So under the default a viewer known only as `'US'` is never served an ad restricted to 50 km
+around Bratislava, and bare New York coordinates never get an `SK`-only ad.
 
 ### Geo-reported impressions
 
@@ -727,7 +742,12 @@ $ad->impressionsByCountry(); // ['SK' => 1240, 'CZ' => 310]
 $ad->clicksByCountry();      // ['SK' => 58]
 ```
 
-Resolution failures never abort the record — the event is saved with a null country.
+Resolution failures never abort the record: an IP geolocation cannot place, a viewer it places
+without a country, and a lookup that throws (a missing MaxMind database, a rate limit, a custom
+provider's exception) all save the event with a null `country_code` and still bump the counter.
+A throwing lookup is passed to your exception handler's `report()`, so a broken provider shows
+up in your logs instead of failing silently; serving (`targetedIn()`) treats it as an unknown
+viewer the same way.
 
 ## Integrates with
 
