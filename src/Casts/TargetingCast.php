@@ -12,7 +12,7 @@ use RoundlyConsulting\Advertisements\ValueObjects\Targeting;
 /**
  * Transparently stores a {@see Targeting} value object as JSON, denormalizing the optional
  * radius centre into the indexed `target_latitude` / `target_longitude` columns so the
- * bounding-box pre-filter can run in SQL.
+ * bounding-box pre-filter can run in SQL. An empty Targeting (no rules) is stored as null.
  *
  * @implements CastsAttributes<Targeting, mixed>
  */
@@ -43,16 +43,18 @@ final class TargetingCast implements CastsAttributes
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): array
     {
-        if ($value === null) {
+        if ($value !== null && ! $value instanceof Targeting) {
+            throw InvalidTargeting::notTargeting();
+        }
+
+        // No rules is no targeting: stored as null, so the ad is untargeted everywhere the
+        // package asks `whereNull('targeting')` — including for an unknown viewer.
+        if ($value === null || $value->isEmpty()) {
             return [
                 'targeting' => null,
                 'target_latitude' => null,
                 'target_longitude' => null,
             ];
-        }
-
-        if (! $value instanceof Targeting) {
-            throw InvalidTargeting::notTargeting();
         }
 
         return [
