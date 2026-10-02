@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
+use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
 use RoundlyConsulting\Money\Money;
@@ -124,4 +125,24 @@ it('fails loudly when the configured text-ad view does not exist', function (): 
 
     expect(fn () => $ad->renderCreative($placement))
         ->toThrow(InvalidArgumentException::class, 'View [missing::text-ad] not found.');
+});
+
+it('applies the render attributes to the text ad, merged and escaped', function (): void {
+    $ad = Advertisement::factory()->create(['name' => 'Attributed ad']);
+    $placement = Placement::factory()->create(['width' => 300, 'height' => 250]);
+
+    $html = (string) Advertisements::render($ad, $placement, [
+        'class' => 'ad',
+        'id' => 'slot-1',
+        'data-note' => '"><script>',
+        'style' => 'border:0',
+    ]);
+
+    expect($html)
+        ->toContain('class="advertisement-text-ad ad"')
+        ->toContain('id="slot-1"')
+        ->toContain('data-note="&quot;&gt;&lt;script&gt;"')
+        ->toContain('style="width:300px;height:250px; border:0;"')
+        ->toContain('data-advertisement="'.$ad->id.'"')
+        ->not->toContain('<script>');
 });

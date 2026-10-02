@@ -13,10 +13,18 @@
         $styles[] = 'height:'.(int) $placement->height.'px';
     }
 
-    $style = implode(';', $styles);
+    // The caller's attributes (Advertisements::render($ad, $placement, $attributes)) merged
+    // over the defaults: classes and styles are appended, anything else wins; all escaped.
+    $defaults = array_filter([
+        'class' => 'advertisement-text-ad',
+        'style' => $styles === [] ? null : implode(';', $styles).';',
+        'data-advertisement' => (string) $advertisement->getKey(),
+    ], static fn (?string $value): bool => $value !== null);
+
+    $attributeBag = (new \Illuminate\View\ComponentAttributeBag(array_map(e(...), $attributes)))->merge($defaults);
     $description = $advertisement->description;
 @endphp
-<div class="advertisement-text-ad"@if ($style !== '') style="{{ $style }}"@endif data-advertisement="{{ $advertisement->getKey() }}">
+<div {{ $attributeBag }}>
     <span class="advertisement-text-ad__name">{{ $advertisement->name }}</span>
     @if (filled($description))
         <span class="advertisement-text-ad__description">{{ $description }}</span>

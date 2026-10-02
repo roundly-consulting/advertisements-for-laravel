@@ -705,7 +705,10 @@ echo $ad->renderCreative('sidebar', ['class' => 'ad']); // the same, from the mo
 ```
 
 The text ad renders through the publishable `advertisements::text-ad` Blade view, so hosts can
-restyle it. Bind your own `RoundlyConsulting\Advertisements\Contracts\CreativeRenderer` to swap
+restyle it. It applies every attribute you pass to its `<div>`, escaped: `class` and `style` are
+appended to its own (`class="advertisement-text-ad ad"`), anything else is added or overrides. The
+image path hands them to media-library's responsive `<img>`, which takes `class`, `alt` (defaulting
+to the ad name) and `sizes`. Bind your own `RoundlyConsulting\Advertisements\Contracts\CreativeRenderer` to swap
 the whole resolution chain.
 
 ### Geo-targeting
