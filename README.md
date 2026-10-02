@@ -449,8 +449,9 @@ nothing in `in()` / `forPlacement()` / `inCategory()`.
 ### Impression & click tracking
 
 Record impressions and clicks — synchronously, or buffered to the queue when
-`tracking.buffered` is true. Both paths write an `advertisement_events` row, bump a
-denormalized counter, and fire an event:
+`tracking.buffered` is true. Both paths write an `advertisement_events` row and bump a
+denormalized counter in one transaction (a failed write leaves neither, so a retried job never
+double-counts), then fire an event:
 
 ```php
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;

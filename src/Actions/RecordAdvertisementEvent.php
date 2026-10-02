@@ -21,7 +21,8 @@ use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 /**
  * The single code path that persists a tracking event. Both the synchronous and
  * the buffered/queued recorders delegate here, so the event row, the
- * denormalized counter, and the dispatched domain event stay consistent.
+ * denormalized counter, and the dispatched domain event stay consistent: the row
+ * and the counter are written in one transaction, the domain event after it.
  *
  * @internal Building block of RecordImpression / RecordClick (via EventRecorder) and the
  *           buffered RecordAdvertisementEventJob. Record through
@@ -60,11 +61,14 @@ final class RecordAdvertisementEvent
         }
 
         $event->meta = new Collection($meta);
-        $event->save();
 
-        // increment() is a single atomic statement, so concurrent records do not
-        // clobber the counter.
-        $advertisement->increment($type->counterColumn());
+        // The row and the counter commit together or not at all, so a failed increment
+        // leaves nothing behind for the queued job's retry to double. increment() is a
+        // single atomic statement, so concurrent records do not clobber the counter.
+        $advertisement->getConnection()->transaction(static function () use ($event, $advertisement, $type): void {
+            $event->save();
+            $advertisement->increment($type->counterColumn());
+        });
 
         event($type === AdvertisementEventType::Impression
             ? new ImpressionRecorded($event)
