@@ -16,7 +16,7 @@ use RoundlyConsulting\Advertisements\Support\EventRecorder;
  * or null when `advertisements.tracking.buffered` queues it instead.
  *
  * The raw use case records what it is given; `Advertisements::for($ad)->track($placement)`
- * additionally refuses a placement the ad does not run in.
+ * additionally refuses an ad that is not live and a placement the ad does not run in.
  */
 final class RecordClick
 {

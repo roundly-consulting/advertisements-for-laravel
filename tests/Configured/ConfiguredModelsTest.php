@@ -52,7 +52,7 @@ it('creates, categorises and reads back the configured advertisement model', fun
 });
 
 it('attaches placements through the pivot the migration actually created', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now()));
 
     Advertisements::for($ad)->placements()->attach(['sidebar']);
 
@@ -68,7 +68,7 @@ it('attaches placements through the pivot the migration actually created', funct
 });
 
 it('records tracking events onto the packaged foreign key', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now()));
 
     Advertisements::for($ad)->placements()->attach(['sidebar']);
 
@@ -106,7 +106,7 @@ it('reads a category tree and its advertisements through the configured model', 
 });
 
 it('reports per-country counts for the configured models', function (): void {
-    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now()));
 
     Advertisements::for($ad)->placements()->attach(['sidebar']);
     Advertisements::for($ad)->track('sidebar')->impression();
@@ -124,7 +124,7 @@ it('falls back to the packaged models when the config names a foreign model', fu
     config()->set('advertisements.model', Media::class);
     config()->set('advertisements.event_model', Media::class);
 
-    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900));
+    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now()));
 
     expect($ad)->toBeInstanceOf(Advertisement::class)
         ->and($ad)->not->toBeInstanceOf(CustomAdvertisement::class)

@@ -27,7 +27,7 @@ use RoundlyConsulting\Advertisements\Models\Placement;
  *
  * Tracking (`for($ad)->track()->impression()/click()`) is recorded in memory only: no
  * event row, no counter increment, no queued job. It returns null, as buffered tracking
- * does. The placement scope is still enforced.
+ * does. The live-ad and placement checks of `track()` still apply.
  *
  * This class lives in src/ so host apps can use it; it depends on PHPUnit's Assert, which is
  * always present in a Laravel app's dev dependencies.

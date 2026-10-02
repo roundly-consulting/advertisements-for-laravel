@@ -22,7 +22,7 @@ use RoundlyConsulting\Money\Money;
  */
 function adInSidebar(): Advertisement
 {
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
     $ad->placements()->attach(Placement::factory()->create(['slug' => 'sidebar']));
 
     return $ad;
@@ -88,7 +88,7 @@ it('asserts nothing recorded, and fails once something was', function (): void {
 
 it('still refuses to track outside the ad\'s placements', function (): void {
     $fake = Advertisements::fake();
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
     Placement::factory()->create(['slug' => 'sidebar']);
 
     expect(fn () => Advertisements::for($ad)->track('sidebar'))->toThrow(AdvertisementNotInPlacement::class);
@@ -139,7 +139,7 @@ it('records creation and still persists it', function (): void {
 
 it('sees lifecycle calls made through the model methods', function (): void {
     $fake = Advertisements::fake();
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
 
     $ad->publish();
     $ad->unpublish();
@@ -157,7 +157,7 @@ it('sees lifecycle calls made through the model methods', function (): void {
 
 it('sees lifecycle calls made through an injected manager', function (): void {
     $fake = Advertisements::fake();
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
 
     app(AdvertisementManager::class)->publish($ad);
 
@@ -166,7 +166,7 @@ it('sees lifecycle calls made through an injected manager', function (): void {
 
 it('records and performs placement changes', function (string $verb, Closure $call): void {
     $fake = Advertisements::fake();
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
     $other = Advertisement::factory()->create();
     $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
     Placement::factory()->create(['slug' => 'header']);
@@ -204,7 +204,7 @@ it('records and performs placement changes', function (string $verb, Closure $ca
 
 it('matches a recorded placement change by model, id or slug', function (): void {
     $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
 
     $bySlug = new RecordedPlacements($ad, ['sidebar']);
     $byModel = new RecordedPlacements($ad, [$sidebar]);

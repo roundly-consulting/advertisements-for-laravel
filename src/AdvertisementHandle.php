@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements;
 
+use RoundlyConsulting\Advertisements\Exceptions\AdvertisementNotActive;
 use RoundlyConsulting\Advertisements\Exceptions\AdvertisementNotInPlacement;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\Placement;
@@ -29,13 +30,20 @@ final readonly class AdvertisementHandle
     }
 
     /**
-     * Track the ad in a placement (or with none). A placement the ad does not run in
-     * is refused — tracking is a scoped boundary, not a free-form counter.
+     * Track the ad in a placement (or with none). An ad that is not live right now (draft,
+     * scheduled, expired, archived) and a placement the ad does not run in are refused —
+     * tracking is a scoped boundary, not a free-form counter, so a stale or forged URL
+     * credits nothing.
      *
+     * @throws AdvertisementNotActive
      * @throws AdvertisementNotInPlacement
      */
     public function track(Placement|int|string|null $placement = null): AdvertisementTracker
     {
+        if (! $this->advertisement->isActive()) {
+            throw AdvertisementNotActive::for($this->advertisement);
+        }
+
         if ($placement !== null && ! $this->runsIn($placement)) {
             throw AdvertisementNotInPlacement::for($this->advertisement, $placement);
         }

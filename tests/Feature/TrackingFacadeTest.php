@@ -7,6 +7,7 @@ use RoundlyConsulting\Advertisements\AdvertisementTracker;
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
 use RoundlyConsulting\Advertisements\Exceptions\AdvertisementException;
+use RoundlyConsulting\Advertisements\Exceptions\AdvertisementNotActive;
 use RoundlyConsulting\Advertisements\Exceptions\AdvertisementNotInPlacement;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Jobs\RecordAdvertisementEventJob;
@@ -15,7 +16,7 @@ use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
 
 it('records impressions and clicks in a placement through the facade', function (): void {
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
     $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
     $ad->placements()->attach($sidebar);
 
@@ -35,7 +36,7 @@ it('records impressions and clicks in a placement through the facade', function 
 });
 
 it('records without a placement', function (): void {
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
 
     $event = Advertisements::for($ad)->track()->impression();
 
@@ -46,7 +47,7 @@ it('records without a placement', function (): void {
 it('returns null and queues the record when tracking is buffered', function (): void {
     config()->set('advertisements.tracking.buffered', true);
     Queue::fake();
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
 
     expect(Advertisements::for($ad)->track()->click())->toBeNull();
 
@@ -55,7 +56,7 @@ it('returns null and queues the record when tracking is buffered', function (): 
 });
 
 it('refuses to track an ad in a placement it does not run in', function (): void {
-    $ad = Advertisement::factory()->create();
+    $ad = Advertisement::factory()->published()->create();
     $other = Advertisement::factory()->create();
     $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
     $other->placements()->attach($sidebar);
@@ -68,4 +69,31 @@ it('refuses to track an ad in a placement it does not run in', function (): void
 
     expect(AdvertisementEvent::query()->count())->toBe(0)
         ->and($ad->refresh()->impressions_count)->toBe(0);
+});
+
+it('refuses to credit an ad that is not live', function (Closure $factory): void {
+    $ad = $factory()->create();
+    $sidebar = Placement::factory()->create(['slug' => 'sidebar']);
+    $ad->placements()->attach($sidebar);
+
+    expect(fn () => Advertisements::for($ad)->track('sidebar')->click())
+        ->toThrow(AdvertisementNotActive::class, "Advertisement [{$ad->id}] is not live")
+        ->and(fn () => Advertisements::for($ad)->track()->impression())->toThrow(AdvertisementException::class);
+
+    expect(AdvertisementEvent::query()->count())->toBe(0)
+        ->and($ad->refresh()->clicks_count)->toBe(0)
+        ->and($ad->impressions_count)->toBe(0);
+})->with([
+    'draft' => fn () => Advertisement::factory(),
+    'scheduled' => fn () => Advertisement::factory()->scheduled(),
+    'expired' => fn () => Advertisement::factory()->expired(),
+    'archived' => fn () => Advertisement::factory()->published()->archived(),
+]);
+
+it('refuses an ad that expired after it was loaded', function (): void {
+    $ad = Advertisement::factory()->published()->create(['expires_at' => now()->addMinute()]);
+
+    $this->travel(2)->minutes();
+
+    expect(fn () => Advertisements::for($ad)->track()->click())->toThrow(AdvertisementNotActive::class);
 });

@@ -471,10 +471,25 @@ $ad->ctr();         // float 0.0–1.0
 $ad->events;        // HasMany<AdvertisementEvent>
 ```
 
-`track($placement)` refuses a placement the ad does not run in (`AdvertisementNotInPlacement`, an
-`AdvertisementException`) — so a forged or stale click URL can't credit a zone the ad was never
-served in. Recording returns the persisted `AdvertisementEvent`; with buffering on it returns
-`null` and runs via `RecordAdvertisementEventJob` on the configured connection/queue.
+`track()` refuses an ad that is not live right now — a draft, scheduled, expired or archived ad
+(`AdvertisementNotActive`) — and `track($placement)` also refuses a placement the ad does not run
+in (`AdvertisementNotInPlacement`). Both are `AdvertisementException`s, so a forged or stale
+impression/click URL credits nothing; catch the base class in a click-redirect controller and
+answer it as you see fit:
+
+```php
+use RoundlyConsulting\Advertisements\Exceptions\AdvertisementException;
+
+try {
+    Advertisements::for($ad)->track('sidebar')->click(new ImpressionData(ip: $request->ip()));
+} catch (AdvertisementException) {
+    // not credited: the ad is not live, or never ran in this placement
+}
+```
+
+Recording returns the persisted `AdvertisementEvent`; with buffering on it returns `null` and runs
+via `RecordAdvertisementEventJob` on the configured connection/queue (the live and placement
+checks run when you call `track()`, before the job is queued).
 
 Listen for `ImpressionRecorded` / `ClickRecorded` (each exposes a public `$event`
 `AdvertisementEvent`).
@@ -635,7 +650,7 @@ Advertisement::factory()->archived()->create();
 constructor-injected managers and the model methods (`$ad->publish()`, `$ad->delete()`, …) hit it
 too. Lifecycle and placement changes still run against the database (reads and events behave
 normally) and are recorded; tracking is recorded in memory only — no row, no counter, no job — and
-returns `null`. The placement scope is still enforced.
+returns `null`. The live-ad and placement checks of `track()` still apply.
 
 ```php
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
