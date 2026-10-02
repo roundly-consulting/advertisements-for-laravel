@@ -57,7 +57,8 @@ route binding and optional 301 redirects from retired slugs via `sluggable-for-l
 composer require roundly-consulting/advertisements-for-laravel
 ```
 
-Publish and run the migrations:
+Publish and run the migrations (if the models that author ads use UUID or ULID keys, set
+`ADVERTISEMENTS_KEY_TYPE=uuid` / `ulid` first — see `key_type` under [Configuration](#configuration)):
 
 ```bash
 php artisan vendor:publish --tag="advertisements-migrations"
@@ -106,6 +107,10 @@ return [
     'placement_model' => RoundlyConsulting\Advertisements\Models\Placement::class,
     'category_model' => RoundlyConsulting\Advertisements\Models\Category::class,
     'event_model' => RoundlyConsulting\Advertisements\Models\AdvertisementEvent::class,
+
+    // Key type of the polymorphic author column: 'bigint' | 'uuid' | 'ulid'. Read by the
+    // migration — set it before you migrate.
+    'key_type' => env('ADVERTISEMENTS_KEY_TYPE', 'bigint'),
 
     // Currency used by AdvertisementData::fromMinor() / ::fromDecimal() when none is given.
     'default_currency' => env('ADVERTISEMENTS_CURRENCY', 'EUR'),
@@ -157,6 +162,7 @@ return [
 | `placement_model` | `class-string` | `…\Models\Placement::class` | The placement (zone) model. |
 | `category_model` | `class-string` | `…\Models\Category::class` | The category model. |
 | `event_model` | `class-string` | `…\Models\AdvertisementEvent::class` | The impression/click event model. |
+| `key_type` | `string` | `bigint` (env `ADVERTISEMENTS_KEY_TYPE`) | Key type of the polymorphic `author_id` column: `bigint`, `uuid` or `ulid` (anything else falls back to `bigint`). The advertisements migration reads it, so set it **before migrating** when your author models use UUID/ULID keys; every author model must share that key type. Changing it later needs a migration of your own. |
 | `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromMinor()` / `fromDecimal()` when none is supplied. Must be registered in money-for-laravel's currency registry. |
 | `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale; also the slug binding fallback and the name locale category/placement slugs are generated from. |
 | `slugs.history` | `bool` | `false` (env `ADVERTISEMENTS_SLUG_HISTORY`) | Keep retired advertisement slugs and redirect (301) them to the current slug. Needs sluggable's migration. |
@@ -317,10 +323,13 @@ price-less ad:
 use RoundlyConsulting\Money\Http\Resources\MoneyResource;
 
 'price' => MoneyResource::from($ad->price),
-// {"minor":"1999","decimal":"19.99","currency":"EUR","exponent":2,"formatted":"19,99 €"}
+// app locale `en`: {"minor":"1999","decimal":"19.99","currency":"EUR","exponent":2,"formatted":"€19.99"}
+// app locale `sk`: … "formatted":"19,99 €" (a non-breaking space before €)
 ```
 
 `minor` is a JSON **string**; a frontend doing arithmetic reads `decimal` (or `BigInt(minor)`).
+`formatted` follows the active app locale (`app()->setLocale()`), so it changes with the request's
+language — display it, never parse it.
 
 ### Updating an advertisement
 
@@ -659,8 +668,9 @@ use RoundlyConsulting\Advertisements\Testing\RecordedPlacements;
 
 $fake = Advertisements::fake();
 
-Advertisements::for($ad)->track('sidebar')->impression();
 $ad->publish();
+Advertisements::for($ad)->placements()->attach(['sidebar']);
+Advertisements::for($ad)->track('sidebar')->impression();
 
 $fake->assertImpressionRecorded(fn (RecordedEvent $e) => $e->ad->is($ad) && $e->placement === 'sidebar');
 $fake->assertPublished($ad);
