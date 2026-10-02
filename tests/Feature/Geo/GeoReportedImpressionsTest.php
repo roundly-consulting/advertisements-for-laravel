@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use RoundlyConsulting\Advertisements\DataTransferObjects\ImpressionData;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
+use RoundlyConsulting\Advertisements\Tests\Fixtures\ThrowingGeolocationProvider;
+use RoundlyConsulting\Geolocation\Exceptions\DatabaseNotFoundException;
 use RoundlyConsulting\Geolocation\Facades\Geolocation;
 
 it('stamps the viewer country and coordinates onto an impression', function (): void {
@@ -76,4 +79,34 @@ it('reports impressions and clicks grouped by country', function (): void {
 
     expect($ad->impressionsByCountry())->toBe(['DE' => 1, 'SK' => 2])
         ->and($ad->clicksByCountry())->toBe(['DE' => 1]);
+});
+
+it('records the event without a country when the geolocation provider throws', function (): void {
+    config()->set('geolocation.pipeline', ['broken']);
+    config()->set('geolocation.providers.broken', ThrowingGeolocationProvider::class);
+
+    $ad = Advertisement::factory()->published()->create();
+
+    $event = Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '8.8.8.8'));
+
+    expect($event?->country_code)->toBeNull()
+        ->and(AdvertisementEvent::query()->count())->toBe(1)
+        ->and($ad->refresh()->impressions_count)->toBe(1);
+});
+
+it('reports a geolocation failure instead of swallowing it', function (): void {
+    config()->set('geolocation.pipeline', ['broken']);
+    config()->set('geolocation.providers.broken', ThrowingGeolocationProvider::class);
+    $reported = [];
+    app(ExceptionHandler::class)->reportable(function (DatabaseNotFoundException $e) use (&$reported): bool {
+        $reported[] = $e;
+
+        return false;
+    });
+
+    $ad = Advertisement::factory()->published()->create();
+
+    Advertisements::for($ad)->track()->impression(new ImpressionData(ip: '8.8.8.8'));
+
+    expect($reported)->toHaveCount(1);
 });
