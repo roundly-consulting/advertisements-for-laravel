@@ -32,6 +32,9 @@ final class CreateAdvertisement
             $advertisement->author()->associate($data->author);
         }
 
+        // The column is a snapshot of the status the dates give at write time.
+        $advertisement->setAttribute('status', $advertisement->status->value);
+
         $advertisement->save();
 
         event(new AdvertisementCreated($advertisement));

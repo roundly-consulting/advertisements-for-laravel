@@ -53,6 +53,9 @@ final class UpdateAdvertisement
             $advertisement->expires_at = $data->expiresAt;
         }
 
+        // Re-snapshot the column from the (possibly moved) dates; an archived ad stays archived.
+        $advertisement->setAttribute('status', $advertisement->status->value);
+
         if ($data->provides('author')) {
             $data->author !== null
                 ? $advertisement->author()->associate($data->author)

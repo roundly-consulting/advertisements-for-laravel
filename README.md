@@ -353,13 +353,25 @@ Every advertisement has a `status` of type `RoundlyConsulting\Advertisements\Enu
 | `Expired` | `expires_at` is in the past. |
 | `Archived` | Explicitly archived. |
 
-The `status` column is the stored source of truth, kept in sync by the lifecycle actions; the
-`status` accessor overlays time-based expiry so a live ad past its `expires_at` reads as
-`Expired` without a re-save.
+Read the status through the `status` accessor (or the `is*()` helpers and the query scopes).
+It is recomputed on every read: an ad you `publish()` or `archive()` reports its new status on
+the same instance, and an ad crossing its `published_at` or `expires_at` reads as `Published` /
+`Expired` the moment the clock passes it, even in a long-lived worker and without a re-save.
 
 ```php
-$ad->status; // AdvertisementStatus::Published
+$ad->status;          // AdvertisementStatus::Draft
+$ad->publish();
+$ad->status;          // AdvertisementStatus::Published — same instance, no refresh needed
+$ad->isPublished();   // true
 ```
+
+The `status` column holds a snapshot: `create()`, `update()` and every lifecycle action write the
+status the dates give at that moment, and only `Archived` overrides the dates. Archiving sticks
+through `update()` and `expire()` (an archived ad gets the expiry date but stays archived); only
+`publish()` and `unpublish()` take an ad out of the archive. Time moves on without rewriting the
+column, so a scheduled ad's column still says `scheduled` after it goes live.
+Query by state with the scopes below (`published()`, `active()`, `expired()`, …), which compare
+the dates, rather than with `where('status', …)`; `archived()` is the one that reads the column.
 
 ### Query scopes
 
