@@ -23,6 +23,7 @@ final class CreativeResolver implements CreativeRenderer
 {
     public function __construct(
         private readonly ViewFactory $views,
+        private readonly PlacementResolver $placements,
     ) {}
 
     /**
@@ -36,7 +37,7 @@ final class CreativeResolver implements CreativeRenderer
             return new HtmlString($this->renderImage($advertisement, $media, $attributes));
         }
 
-        return $this->renderTextAd($advertisement, $this->resolvePlacement($placement), $attributes);
+        return $this->renderTextAd($advertisement, $this->placements->resolve($placement), $attributes);
     }
 
     /**
@@ -67,17 +68,6 @@ final class CreativeResolver implements CreativeRenderer
         ])->render();
 
         return new HtmlString(trim($html));
-    }
-
-    private function resolvePlacement(Placement|int|string $placement): ?Placement
-    {
-        if ($placement instanceof Placement) {
-            return $placement;
-        }
-
-        return is_int($placement)
-            ? PlacementModel::query()->find($placement)
-            : PlacementModel::query()->whereSlug($placement)->first();
     }
 
     private function textAdView(): string

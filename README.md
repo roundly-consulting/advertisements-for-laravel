@@ -441,6 +441,11 @@ Advertisements::random('sidebar');
 Advertisement::query()->forPlacement($sidebar)->get(); // model, id, or slug
 ```
 
+A string reference is matched as a slug first; a digit-only string that no placement uses as its
+slug is then taken as an id, so form and route input (`'12'`) works as-is. Categories resolve the
+same way. An unknown reference is skipped by `attach()` / `sync()` / `detach()` and matches
+nothing in `in()` / `forPlacement()` / `inCategory()`.
+
 ### Impression & click tracking
 
 Record impressions and clicks — synchronously, or buffered to the queue when
@@ -509,7 +514,7 @@ Advertisement::query()->inCategory($vehicles)->get();                          /
 Advertisement::query()->inCategory($vehicles, includeDescendants: true)->get(); // + nested
 ```
 
-`inCategory()` accepts a model, id, or slug; an unknown slug matches nothing.
+`inCategory()` accepts a model, id, slug or numeric-string id; an unknown one matches nothing.
 
 ### Slugs and route binding
 

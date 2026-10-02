@@ -9,7 +9,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
 use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\KeyString;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
+use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\MediaLibrary\Buckets\MediaBucket;
 use RoundlyConsulting\MediaLibrary\Concerns\InteractsWithMedia;
 use RoundlyConsulting\MediaLibrary\Models\Media;
@@ -157,7 +159,12 @@ trait HasAdvertisementMedia
             return (string) PlacementModel::query()->whereKey($placement)->value('slug');
         }
 
-        return $placement;
+        // A plain slug names its bucket without a query; a digit-only string may be an id.
+        if (! KeyString::isKey($placement)) {
+            return $placement;
+        }
+
+        return (string) (app(PlacementResolver::class)->resolve($placement)->slug ?? $placement);
     }
 
     private function configureCreativeBucket(MediaBucket $bucket, ?int $width, ?int $height): MediaBucket
