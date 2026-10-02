@@ -58,5 +58,24 @@ Initial public release.
 
 - `Advertisements::fake()` bound a non-subtype of the `final` manager, so any class
   constructor-injecting `AdvertisementManager` hit a `TypeError` under the fake.
+- `$ad->status` and the `is*()` helpers are recomputed on every read, so they are right on the
+  same instance after `publish()` / `archive()` and once `published_at` / `expires_at` pass.
+- `update()` changes only the fields the `AdvertisementData` passes: an omitted argument keeps the
+  stored value, an explicit `null` clears it (`AdvertisementData::provides()`), so a price cut no
+  longer unpublishes and strips an ad.
+- `create()` and `update()` write the `status` column from the dates they set; `expire()` on an
+  archived ad keeps it archived.
+- Geo-targeting checks every rule against what is known about the viewer: a radius-only ad is no
+  longer served worldwide to a country-only viewer, nor a country-restricted ad to bare
+  coordinates. An unknown viewer, or a rule the viewer lacks the fact for, follows
+  `geo.match_when_unknown`.
+- A geolocation lookup that throws is reported and treated as an unknown viewer; it never aborts
+  serving or tracking. An empty `Targeting` is stored as untargeted.
+- A digit-only string resolves as a category/placement id when no slug matches it.
+- `model:prune` force-deletes expired ads one by one, deleting their creatives (rows and files)
+  and slug history and firing `AdvertisementDeleted`; `forceDelete()` removes creatives too.
+- The tracking event row and its counter commit in one transaction.
+- `track()` refuses an ad that is not live (`AdvertisementNotActive`).
+- The text-ad fallback applies the `render()` attributes.
 - The fake's `recordImpression/recordClick` returned `RecordedEvent`, contradicting the facade's
   documented return type.
