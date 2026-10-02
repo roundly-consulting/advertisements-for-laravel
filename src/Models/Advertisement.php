@@ -8,8 +8,8 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -87,7 +87,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
 
     use HasSlug;
     use HasTranslations;
-    use MassPrunable;
+    use Prunable;
     use SoftDeletes;
 
     /** @var list<string> */
@@ -486,7 +486,13 @@ class Advertisement extends Model implements HasMedia, Sluggable
         $query->whereIn('category_id', $ids);
     }
 
-    /** @return Builder<static> */
+    /**
+     * Ads past their expiry. Pruned one by one (not mass-pruned), so each prune is a real
+     * force delete: model events fire, the ad's creatives are deleted with it and sluggable
+     * drops its slug-history rows.
+     *
+     * @return Builder<static>
+     */
     public function prunable(): Builder
     {
         return static::query()->where('expires_at', '<=', now());

@@ -548,9 +548,8 @@ $ad->slugFor('sk');                                       // exact locale, no fa
 ```
 
 With `slugs.history` on, every retired slug is remembered and a GET for it answers **301** to
-the current URL (query string kept). Pruned advertisements fire no model events, so their
-history rows stay behind as inert orphans (they redirect nowhere) until sluggable's own history
-pruning ages them out.
+the current URL (query string kept). A force-deleted or pruned advertisement takes its history
+rows with it; a soft-deleted one keeps them (and its slug reserved) for a restore.
 
 **Placements and categories** have a single string slug — a code-facing key such as
 `'sidebar'`. Leave it empty and it is generated from the `fallback_locale` name (`Side Banner`
@@ -583,11 +582,16 @@ $ad->price?->add(Money::ofMinor(500, 'EUR')); // money's API; mismatched currenc
 
 ### Pruning expired advertisements
 
-The model is `MassPrunable`; advertisements whose `expires_at` is in the past are pruned:
+The model is `Prunable`; advertisements whose `expires_at` is in the past are pruned:
 
 ```bash
 php artisan model:prune --model="RoundlyConsulting\Advertisements\Models\Advertisement"
 ```
+
+Each expired ad is force-deleted one by one, so pruning cleans up after it: its creatives (media
+rows and files), placement links, tracking events and slug history go with it, and
+`AdvertisementDeleted` fires for it like for any other delete. A plain `$ad->delete()` stays a
+soft delete that keeps the creatives for a restore; `$ad->forceDelete()` removes them too.
 
 ### Events
 

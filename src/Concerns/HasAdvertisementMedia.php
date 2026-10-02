@@ -14,6 +14,7 @@ use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\MediaLibrary\Buckets\MediaBucket;
 use RoundlyConsulting\MediaLibrary\Concerns\InteractsWithMedia;
+use RoundlyConsulting\MediaLibrary\MediaLibraryManager;
 use RoundlyConsulting\MediaLibrary\Models\Media;
 use RoundlyConsulting\MediaLibrary\Variants\VariantRegistrar;
 
@@ -42,6 +43,32 @@ trait HasAdvertisementMedia
         'image/gif',
         'image/avif',
     ];
+
+    /**
+     * media-library never deletes an owner's media itself, so an ad that is gone for good — a
+     * force delete, or `model:prune` — takes its creatives with it. A soft delete keeps them,
+     * so a restore is lossless.
+     */
+    public static function bootHasAdvertisementMedia(): void
+    {
+        static::registerModelEvent('forceDeleted', static function (self $advertisement): void {
+            $advertisement->deleteCreatives();
+        });
+    }
+
+    /**
+     * Permanently delete every creative of this ad (rows and files, soft-deleted media too).
+     *
+     * @internal Runs when the ad is force-deleted or pruned.
+     */
+    public function deleteCreatives(): void
+    {
+        $media = app(MediaLibraryManager::class);
+
+        foreach ($this->media()->withTrashed()->get() as $creative) {
+            $media->delete($creative);
+        }
+    }
 
     public function registerMediaBuckets(): void
     {
