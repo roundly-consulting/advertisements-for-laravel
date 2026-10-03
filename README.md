@@ -173,18 +173,23 @@ return [
 | `media.creative_bucket_prefix` | `string` | `creative` | Prefix for the per-placement bucket name (`{prefix}:{slug}`). |
 | `media.fallback_bucket` | `string` | `creative` | Generic, size-less creative bucket tried before the text-ad fallback. |
 | `media.disk` | `?string` | `null` (env `ADVERTISEMENTS_MEDIA_DISK`) | Disk for creatives (`null` = media-library default). |
-| `media.responsive_widths` | `?list<int>` | `null` | Responsive width ladder (`null` = media-library default). |
+| `media.responsive_widths` | `?list<int>` | `null` | Responsive width ladder (`null` = media-library default). Every width must be a positive integer; a bad entry throws instead of being dropped. |
 | `media.display_variant` | `string` | `display` | Variant name fit to the placement dimensions. |
 | `media.use_fallback_bucket` | `bool` | `true` | Try the generic creative bucket before the text ad. |
 | `media.text_ad_view` | `string` | `advertisements::text-ad` | Blade view rendering the text-ad fallback. |
 | `geo.targeting_enabled` | `bool` | `true` (env `ADVERTISEMENTS_GEO_TARGETING`) | Apply geo targeting in `targetedIn()`. |
 | `geo.untargeted_match` | `bool` | `true` | Ads with no targeting match every viewer. |
-| `geo.match_when_unknown` | `string` | `untargeted_only` | What an unknown viewer gets — `untargeted_only` or `all` — and whether a rule the viewer lacks the country or coordinates for fails or passes (see [Geo-targeting](#geo-targeting)). |
+| `geo.match_when_unknown` | `string` | `untargeted_only` | What an unknown viewer gets — `untargeted_only` or `all` — and whether a rule the viewer lacks the country or coordinates for fails or passes (see [Geo-targeting](#geo-targeting)). Anything else (`ALL`, `everything`) throws an `InvalidConfigurationException` listing both. |
 | `geo.stamp_events` | `bool` | `true` (env `ADVERTISEMENTS_GEO_STAMP`) | Stamp the viewer country (+ region/city/coords) onto recorded events. |
 
 Every `bool` key accepts `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no` (from `.env` or the
 published file). Anything else throws an `InvalidConfigurationException` naming the key, so a
 typo never quietly becomes the default.
+
+The other keys are just as strict. One you leave unset (`null`) takes its default; one you set to
+the wrong shape throws an `InvalidConfigurationException` naming the key: the currency, locale,
+bucket names, display variant, text-ad view, disk and queue settings must be non-empty strings.
+`php artisan about` shows a broken setting as `INVALID`.
 
 ## Usage
 
