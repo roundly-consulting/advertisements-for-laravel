@@ -28,8 +28,9 @@ return [
     |
     | The key type used for the polymorphic author column. Use "uuid" or "ulid"
     | when the models that author advertisements use UUID/ULID primary keys,
-    | otherwise leave it as "bigint". Anything unrecognized falls back to
-    | "bigint". Your author models must share one key type — set this to match.
+    | otherwise leave it as "bigint". Anything else throws an
+    | InvalidConfigurationException naming the key. Your author models must share
+    | one key type — set this to match.
     |
     | Supported: "bigint", "uuid", "ulid"
     |
@@ -141,7 +142,7 @@ return [
     |
     */
 
-    'register_facade_alias' => (bool) env('ADVERTISEMENTS_FACADE_ALIAS', true),
+    'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
 
     /*
     |--------------------------------------------------------------------------

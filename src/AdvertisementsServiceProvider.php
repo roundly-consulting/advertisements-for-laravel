@@ -15,6 +15,7 @@ use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 final class AdvertisementsServiceProvider extends PackageServiceProvider
 {
@@ -71,15 +72,15 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
             'Default currency' => (string) config('advertisements.default_currency', 'EUR'),
             'Creatives' => $this->creatives(),
             'Geo targeting' => $this->geoTargeting(),
-            'Geo stamping' => config('advertisements.geo.stamp_events') ? 'ON' : 'OFF',
-            'Slug history' => config('advertisements.slugs.history') ? 'ON' : 'OFF',
-            'Facade alias' => config('advertisements.register_facade_alias') === false ? 'OFF' : 'ON',
+            'Geo stamping' => Config::boolean('advertisements.geo.stamp_events', true) ? 'ON' : 'OFF',
+            'Slug history' => Config::boolean('advertisements.slugs.history') ? 'ON' : 'OFF',
+            'Facade alias' => Config::boolean('advertisements.register_facade_alias', true) ? 'ON' : 'OFF',
         ];
     }
 
     private function tracking(): string
     {
-        if (! config('advertisements.tracking.buffered')) {
+        if (! Config::boolean('advertisements.tracking.buffered')) {
             return 'INLINE';
         }
 
@@ -101,20 +102,20 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
         return sprintf(
             'disk %s, %s fallback bucket, %s responsive widths',
             config('advertisements.media.disk') !== null ? 'SET' : 'MEDIA DEFAULT',
-            config('advertisements.media.use_fallback_bucket') ? 'with' : 'no',
+            Config::boolean('advertisements.media.use_fallback_bucket', true) ? 'with' : 'no',
             is_array($widths) ? (string) count($widths) : 'MEDIA DEFAULT',
         );
     }
 
     private function geoTargeting(): string
     {
-        if (! config('advertisements.geo.targeting_enabled')) {
+        if (! Config::boolean('advertisements.geo.targeting_enabled', true)) {
             return 'OFF';
         }
 
         return sprintf(
             'ON (untargeted ads %s, unknown viewer sees %s)',
-            config('advertisements.geo.untargeted_match') ? 'match' : 'excluded',
+            Config::boolean('advertisements.geo.untargeted_match', true) ? 'match' : 'excluded',
             config('advertisements.geo.match_when_unknown') === 'all' ? 'all' : 'untargeted only',
         );
     }

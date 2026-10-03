@@ -12,6 +12,7 @@ use RoundlyConsulting\Advertisements\Jobs\RecordAdvertisementEventJob;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
 use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * Routes a tracking record to the synchronous core or the queued job per the
@@ -33,7 +34,7 @@ final class EventRecorder
         Placement|int|string|null $placement = null,
         ?ImpressionData $data = null,
     ): ?AdvertisementEvent {
-        if (! config('advertisements.tracking.buffered', false)) {
+        if (! Config::boolean('advertisements.tracking.buffered')) {
             return $this->core->execute($advertisement, $type, $placement, $data);
         }
 

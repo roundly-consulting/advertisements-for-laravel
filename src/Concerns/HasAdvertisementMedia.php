@@ -17,6 +17,7 @@ use RoundlyConsulting\MediaLibrary\Concerns\InteractsWithMedia;
 use RoundlyConsulting\MediaLibrary\MediaLibraryManager;
 use RoundlyConsulting\MediaLibrary\Models\Media;
 use RoundlyConsulting\MediaLibrary\Variants\VariantRegistrar;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * First-class visual creatives for the bundled Advertisement model, built on
@@ -173,7 +174,7 @@ trait HasAdvertisementMedia
 
     private function creativeFallbackEnabled(): bool
     {
-        return (bool) config('advertisements.media.use_fallback_bucket', true);
+        return Config::boolean('advertisements.media.use_fallback_bucket', true);
     }
 
     private function creativePlacementSlug(Placement|int|string $placement): string

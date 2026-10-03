@@ -132,7 +132,7 @@ return [
     ],
 
     // Register the `Advertisements` facade alias automatically.
-    'register_facade_alias' => (bool) env('ADVERTISEMENTS_FACADE_ALIAS', true),
+    'register_facade_alias' => env('ADVERTISEMENTS_FACADE_ALIAS', true),
 
     // Visual creatives (media-library): one single-file bucket per placement named
     // "{creative_bucket_prefix}:{placement-slug}" plus a generic "{fallback_bucket}".
@@ -162,7 +162,7 @@ return [
 | `placement_model` | `class-string` | `…\Models\Placement::class` | The placement (zone) model. |
 | `category_model` | `class-string` | `…\Models\Category::class` | The category model. |
 | `event_model` | `class-string` | `…\Models\AdvertisementEvent::class` | The impression/click event model. |
-| `key_type` | `string` | `bigint` (env `ADVERTISEMENTS_KEY_TYPE`) | Key type of the polymorphic `author_id` column: `bigint`, `uuid` or `ulid` (anything else falls back to `bigint`). The advertisements migration reads it, so set it **before migrating** when your author models use UUID/ULID keys; every author model must share that key type. Changing it later needs a migration of your own. |
+| `key_type` | `string` | `bigint` (env `ADVERTISEMENTS_KEY_TYPE`) | Key type of the polymorphic `author_id` column: `bigint`, `uuid` or `ulid` (anything else throws an `InvalidConfigurationException`). The advertisements migration reads it, so set it **before migrating** when your author models use UUID/ULID keys; every author model must share that key type. Changing it later needs a migration of your own. |
 | `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromMinor()` / `fromDecimal()` when none is supplied. Must be registered in money-for-laravel's currency registry. |
 | `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale; also the slug binding fallback and the name locale category/placement slugs are generated from. |
 | `slugs.history` | `bool` | `false` (env `ADVERTISEMENTS_SLUG_HISTORY`) | Keep retired advertisement slugs and redirect (301) them to the current slug. Needs sluggable's migration. |
@@ -181,6 +181,10 @@ return [
 | `geo.untargeted_match` | `bool` | `true` | Ads with no targeting match every viewer. |
 | `geo.match_when_unknown` | `string` | `untargeted_only` | What an unknown viewer gets — `untargeted_only` or `all` — and whether a rule the viewer lacks the country or coordinates for fails or passes (see [Geo-targeting](#geo-targeting)). |
 | `geo.stamp_events` | `bool` | `true` (env `ADVERTISEMENTS_GEO_STAMP`) | Stamp the viewer country (+ region/city/coords) onto recorded events. |
+
+Every `bool` key accepts `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no` (from `.env` or the
+published file). Anything else throws an `InvalidConfigurationException` naming the key, so a
+typo never quietly becomes the default.
 
 ## Usage
 

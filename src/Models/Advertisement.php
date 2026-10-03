@@ -35,6 +35,7 @@ use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
 use RoundlyConsulting\MediaLibrary\Contracts\HasMedia;
 use RoundlyConsulting\Money\Casts\AsMoney;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Sluggable\Concerns\HasSlug;
 use RoundlyConsulting\Sluggable\Contracts\Sluggable;
 use RoundlyConsulting\Sluggable\Definitions\SlugDefinition;
@@ -402,7 +403,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
             ->filter(fn (self $ad): bool => $ad->targeting !== null && $ad->targeting->matches($viewer, $unknownMatches))
             ->modelKeys();
 
-        $untargetedMatch = (bool) config('advertisements.geo.untargeted_match', true);
+        $untargetedMatch = Config::boolean('advertisements.geo.untargeted_match', true);
 
         $query->where(function (Builder $query) use ($untargetedMatch, $matched): void {
             if ($untargetedMatch) {
@@ -517,7 +518,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
                 ->includeTrashed()
                 ->fallback(LocaleFallback::Any)
                 ->fallbackLocale(fn (): string => (string) config('advertisements.fallback_locale', 'en'))
-                ->keepHistory((bool) config('advertisements.slugs.history', false))
+                ->keepHistory(Config::boolean('advertisements.slugs.history'))
                 ->routeKey(),
         );
     }

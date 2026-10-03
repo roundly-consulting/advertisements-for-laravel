@@ -17,6 +17,7 @@ use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
 use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * The single code path that persists a tracking event. Both the synchronous and
@@ -83,7 +84,7 @@ final class RecordAdvertisementEvent
      */
     private function resolveLocation(?ImpressionData $data): ?Location
     {
-        if (! (bool) config('advertisements.geo.stamp_events', true)) {
+        if (! Config::boolean('advertisements.geo.stamp_events', true)) {
             return null;
         }
 

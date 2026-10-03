@@ -31,6 +31,7 @@ use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\Advertisements\Testing\AdvertisementsFake;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * The advertisements API and the root of the `Advertisements` facade. Inject it to use
@@ -133,7 +134,7 @@ class AdvertisementManager
     ): Builder {
         $query = $this->in($placement);
 
-        if (! (bool) config('advertisements.geo.targeting_enabled', true)) {
+        if (! Config::boolean('advertisements.geo.targeting_enabled', true)) {
             return $query;
         }
 
