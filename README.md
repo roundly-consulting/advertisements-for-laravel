@@ -164,7 +164,7 @@ return [
 | `event_model` | `class-string` | `…\Models\AdvertisementEvent::class` | The impression/click event model. |
 | `key_type` | `string` | `bigint` (env `ADVERTISEMENTS_KEY_TYPE`) | Key type of the polymorphic `author_id` column: `bigint`, `uuid` or `ulid` (anything else throws an `InvalidConfigurationException`). The advertisements migration reads it, so set it **before migrating** when your author models use UUID/ULID keys; every author model must share that key type. Changing it later needs a migration of your own. |
 | `default_currency` | `string` | `EUR` (env `ADVERTISEMENTS_CURRENCY`) | Currency used by `AdvertisementData::fromMinor()` / `fromDecimal()` when none is supplied. Must be registered in money-for-laravel's currency registry. |
-| `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale; also the slug binding fallback and the name locale category/placement slugs are generated from. |
+| `fallback_locale` | `string` | app fallback (env `ADVERTISEMENTS_FALLBACK_LOCALE`) | Locale used when a translatable attribute has no value for the active locale; also the slug binding fallback and the name locale category/placement slugs are generated from. Not set (`null` or blank) means no translation fallback, and slugs use `en`. |
 | `slugs.history` | `bool` | `false` (env `ADVERTISEMENTS_SLUG_HISTORY`) | Keep retired advertisement slugs and redirect (301) them to the current slug. Needs sluggable's migration. |
 | `tracking.buffered` | `bool` | `false` (env `ADVERTISEMENTS_TRACKING_BUFFERED`) | Dispatch recording to the queue instead of writing inline. |
 | `tracking.queue` | `?string` | `null` (env `ADVERTISEMENTS_TRACKING_QUEUE`) | Queue name for buffered recording (`null` = default). |
@@ -186,10 +186,12 @@ Every `bool` key accepts `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no` (from
 published file). Anything else throws an `InvalidConfigurationException` naming the key, so a
 typo never quietly becomes the default.
 
-The other keys are just as strict. One you leave unset (`null`) takes its default; one you set to
+The other keys are just as strict. One that is not set — left out, `null` or blank (`''` or
+whitespace, such as an `ADVERTISEMENTS_FALLBACK_LOCALE=` line) — takes its default; one you set to
 the wrong shape throws an `InvalidConfigurationException` naming the key: the currency, locale,
-bucket names, display variant, text-ad view, disk and queue settings must be non-empty strings.
-`php artisan about` shows a broken setting as `INVALID`.
+bucket names, display variant, text-ad view, disk and queue settings must be strings, and every
+responsive width a real width (a blank entry inside the list throws). `php artisan about` shows a
+broken setting as `INVALID`.
 
 ## Usage
 

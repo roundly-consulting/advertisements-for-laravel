@@ -98,6 +98,8 @@ return [
     |
     | Locale used when the active locale has no translation for a translatable
     | attribute (name, description, slug). Defaults to the app fallback locale.
+    | A blank value (ADVERTISEMENTS_FALLBACK_LOCALE=) or null is not set: no
+    | translation fallback, and slugs use "en".
     |
     */
 
