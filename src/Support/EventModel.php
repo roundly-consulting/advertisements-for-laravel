@@ -11,19 +11,16 @@ use RoundlyConsulting\PackageToolkit\Support\ModelResolver;
 /**
  * Resolves the Eloquent model backing a tracking event from `advertisements.event_model`.
  *
- * The toolkit ModelResolver validates that the configured value is a real Eloquent
- * model; it cannot know it is *ours*, so anything that is not an AdvertisementEvent
- * (and so cannot answer the package's type cast and relations) falls back to the
- * packaged model.
+ * Absent config resolves the packaged model; anything else must be that model or a subclass of
+ * it, or the toolkit's ModelResolver throws InvalidConfigurationException naming the key — a
+ * foreign class is never silently replaced.
  */
 final class EventModel
 {
     /** @return class-string<AdvertisementEvent> */
     public static function class(): string
     {
-        $model = ModelResolver::for('advertisements.event_model', AdvertisementEvent::class);
-
-        return is_a($model, AdvertisementEvent::class, true) ? $model : AdvertisementEvent::class;
+        return ModelResolver::for('advertisements.event_model', AdvertisementEvent::class);
     }
 
     public static function new(): AdvertisementEvent

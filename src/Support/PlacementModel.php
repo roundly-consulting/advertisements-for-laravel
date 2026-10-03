@@ -11,18 +11,16 @@ use RoundlyConsulting\PackageToolkit\Support\ModelResolver;
 /**
  * Resolves the Eloquent model backing a placement from `advertisements.placement_model`.
  *
- * The toolkit ModelResolver validates that the configured value is a real Eloquent
- * model; it cannot know it is *ours*, so anything that is not a Placement (and so
- * cannot answer the package's slug/dimension reads) falls back to the packaged model.
+ * Absent config resolves the packaged model; anything else must be that model or a subclass of
+ * it, or the toolkit's ModelResolver throws InvalidConfigurationException naming the key — a
+ * foreign class is never silently replaced.
  */
 final class PlacementModel
 {
     /** @return class-string<Placement> */
     public static function class(): string
     {
-        $model = ModelResolver::for('advertisements.placement_model', Placement::class);
-
-        return is_a($model, Placement::class, true) ? $model : Placement::class;
+        return ModelResolver::for('advertisements.placement_model', Placement::class);
     }
 
     public static function new(): Placement

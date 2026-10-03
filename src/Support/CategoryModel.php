@@ -11,18 +11,16 @@ use RoundlyConsulting\PackageToolkit\Support\ModelResolver;
 /**
  * Resolves the Eloquent model backing a category from `advertisements.category_model`.
  *
- * The toolkit ModelResolver validates that the configured value is a real Eloquent
- * model; it cannot know it is *ours*, so anything that is not a Category (and so
- * cannot answer the package's tree reads) falls back to the packaged model.
+ * Absent config resolves the packaged model; anything else must be that model or a subclass of
+ * it, or the toolkit's ModelResolver throws InvalidConfigurationException naming the key — a
+ * foreign class is never silently replaced.
  */
 final class CategoryModel
 {
     /** @return class-string<Category> */
     public static function class(): string
     {
-        $model = ModelResolver::for('advertisements.category_model', Category::class);
-
-        return is_a($model, Category::class, true) ? $model : Category::class;
+        return ModelResolver::for('advertisements.category_model', Category::class);
     }
 
     public static function new(): Category

@@ -37,12 +37,14 @@ it('honours a host subclass', function (string $resolver, string $key, string $p
         ->and($resolver::new())->toBeInstanceOf($custom);
 })->with('resolvers');
 
-it('falls back to the packaged model for a real model that is not ours', function (string $resolver, string $key, string $packaged): void {
-    // The toolkit resolver validates "is an Eloquent model"; it cannot know the model
-    // is one of ours, and a Media row cannot answer this package's casts and relations.
+it('refuses a foreign model instead of falling back to the packaged one', function (string $resolver, string $key, string $packaged): void {
+    // The toolkit refuses any class that is not the packaged model or a subclass of it.
     config()->set($key, Media::class);
 
-    expect($resolver::class())->toBe($packaged);
+    expect(fn (): string => $resolver::class())->toThrow(
+        InvalidConfigurationException::class,
+        "Configuration value [{$key}] must be a class-string of [{$packaged}], [".Media::class.'] given.',
+    );
 })->with('resolvers');
 
 it('throws when the configured value is not a model at all', function (string $resolver, string $key): void {

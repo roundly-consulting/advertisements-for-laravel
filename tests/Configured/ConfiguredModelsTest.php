@@ -6,12 +6,12 @@ use RoundlyConsulting\Advertisements\DataTransferObjects\AdvertisementData;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
-use RoundlyConsulting\Advertisements\Models\AdvertisementEvent;
 use RoundlyConsulting\Advertisements\Tests\Models\CustomAdvertisement;
 use RoundlyConsulting\Advertisements\Tests\Models\CustomAdvertisementEvent;
 use RoundlyConsulting\Advertisements\Tests\Models\CustomCategory;
 use RoundlyConsulting\Advertisements\Tests\Models\CustomPlacement;
 use RoundlyConsulting\MediaLibrary\Models\Media;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 
 /**
  * The four `advertisements.*model` keys document pointing the package at a host's
@@ -118,17 +118,15 @@ it('reports per-country counts for the configured models', function (): void {
         ->and($ad->clicksByCountry())->toBe([]);
 });
 
-it('falls back to the packaged models when the config names a foreign model', function (): void {
-    // A real Eloquent model that is not one of ours: the toolkit resolver validates
-    // "is a Model", the package must still validate "is one of MINE".
+it('refuses a foreign model instead of falling back to the packaged one', function (): void {
+    // A real Eloquent model that is not one of ours: the toolkit refuses it by key, so a
+    // host's misconfiguration never quietly writes through the packaged model.
     config()->set('advertisements.model', Media::class);
-    config()->set('advertisements.event_model', Media::class);
 
-    $ad = Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now()));
-
-    expect($ad)->toBeInstanceOf(Advertisement::class)
-        ->and($ad)->not->toBeInstanceOf(CustomAdvertisement::class)
-        ->and(Advertisements::for($ad)->track()->impression())->toBeInstanceOf(AdvertisementEvent::class);
+    expect(fn (): mixed => Advertisements::create(AdvertisementData::fromMinor('Boots', 4900, publishedAt: now())))->toThrow(
+        InvalidConfigurationException::class,
+        'Configuration value [advertisements.model] must be a class-string of ['.Advertisement::class.'], ['.Media::class.'] given.',
+    );
 });
 
 it('generates and resolves slugs through the configured models', function (): void {
