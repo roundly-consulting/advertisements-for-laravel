@@ -57,20 +57,6 @@ it('skips the facade alias when opted out', function (): void {
     expect(reregisterAdvertisements())->toBe([]);
 });
 
-it('publishes the config file', function (): void {
-    $target = config_path('advertisements.php');
-
-    if (file_exists($target)) {
-        unlink($target);
-    }
-
-    $this->artisan('vendor:publish', ['--tag' => 'advertisements-config'])->assertSuccessful();
-
-    expect(file_exists($target))->toBeTrue();
-
-    unlink($target);
-});
-
 /**
  * Migrations are PUBLISH-ONLY (fleet policy): the package must never add its own
  * migration directory to the migrator, so a host's `php artisan migrate` runs

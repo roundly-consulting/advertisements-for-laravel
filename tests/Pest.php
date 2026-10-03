@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Advertisements\Tests\Fixtures\PublishSandboxTestCase;
 use RoundlyConsulting\Advertisements\Tests\Fixtures\SwappedModelsTestCase;
 use RoundlyConsulting\Advertisements\Tests\TestCase;
 use RoundlyConsulting\Geolocation\DataTransferObjects\Location;
@@ -17,6 +18,10 @@ uses(TestCase::class)->in(
 // subclasses BEFORE the providers boot, so they run on their own base case in their own
 // directory. Pest binds a test case per directory, not per file.
 uses(SwappedModelsTestCase::class)->in('Configured');
+
+// Publishing writes files: into a throwaway config/ set before boot, never the testbench
+// skeleton every parallel process loads its configuration from.
+uses(PublishSandboxTestCase::class)->in('Publish');
 
 /**
  * Build a geolocation Location for tests (seeded into Geolocation::fake()).
