@@ -21,29 +21,14 @@ declare(strict_types=1);
  */
 it('ships exactly the config keys it reads', function (): void {
     expect(__DIR__.'/../../config/advertisements.php')->toSatisfyConfigContract([__DIR__.'/../../src', __DIR__.'/../../database'], [
-        // The four model keys are read through the toolkit's `ModelResolver::for('advertisements.…')`
-        // seam rather than a `config()` call. They are real reads — they drive the whole swap
-        // — but they are not `config(` tokens, so a prefix is what makes them visible.
-        //
-        // The keys are named exactly rather than using a blanket `'advertisements.'`, which
-        // would count ANY string literal under the prefix as a read wherever it appeared —
-        // including translation keys and bucket names that are not config keys at all (the
-        // trap alerts hit with its `alerts.health` route-name default).
+        // Read through Support\AdvertisementsConfig's own strict readers (a non-blank string,
+        // an optional string), each naming its key as a literal argument the scraper does not
+        // follow into the reader. Named exactly rather than a blanket `'advertisements.'`, which
+        // would count ANY literal under the prefix as a read — translation keys and bucket
+        // names included (the trap alerts hit with its `alerts.health` route-name default).
         'extraReadPrefixes' => [
-            'advertisements.model',
-            'advertisements.placement_model',
-            'advertisements.category_model',
-            'advertisements.event_model',
-            // Read through `KeyType::fromConfig('advertisements.key_type')` in the
-            // migration (database/ is scanned above) — a real read that decides the author
-            // morph column type, but not a `config(` token, so the exact key prefix is
-            // what makes it visible.
-            'advertisements.key_type',
-            // Read through Support\AdvertisementsConfig's strict readers (oneOf, a non-blank
-            // string, an optional string), each naming its key as a literal argument.
             'advertisements.default_currency',
             'advertisements.fallback_locale',
-            'advertisements.geo.match_when_unknown',
             'advertisements.media.creative_bucket_prefix',
             'advertisements.media.disk',
             'advertisements.media.display_variant',
