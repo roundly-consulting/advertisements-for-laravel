@@ -8,10 +8,11 @@ use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
- * Strict reads of the non-boolean `advertisements.*` settings. An absent (null) key takes its
- * default; a present value of the wrong shape — a `match_when_unknown` typo, a blank bucket, a
- * junk responsive width — throws {@see InvalidConfigurationException} naming the key. A typo is
- * never swapped for the default (a `match_when_unknown` typo used to read as `untargeted_only`).
+ * Strict reads of the non-boolean `advertisements.*` settings. A key that is not set — absent,
+ * null or blank (`''` or whitespace, a host's `KEY=`) — takes its default; a present value of the
+ * wrong shape — a `match_when_unknown` typo, an array for a bucket, a junk responsive width —
+ * throws {@see InvalidConfigurationException} naming the key. A typo is never swapped for the
+ * default (a `match_when_unknown` typo used to read as `untargeted_only`).
  *
  * @internal
  */
@@ -36,13 +37,13 @@ final class AdvertisementsConfig
         return self::string('advertisements.default_currency', 'EUR');
     }
 
-    /** The locale translations and slugs fall back to; `en` when unset. */
+    /** The locale slugs fall back to; `en` when not set. */
     public static function fallbackLocale(): string
     {
         return self::optionalFallbackLocale() ?? 'en';
     }
 
-    /** The fallback locale, or null when none is configured. */
+    /** The fallback locale, or null when not set (absent, null or blank): no translation fallback. */
     public static function optionalFallbackLocale(): ?string
     {
         return self::optionalString('advertisements.fallback_locale');
@@ -68,14 +69,16 @@ final class AdvertisementsConfig
         return self::string('advertisements.media.text_ad_view', 'advertisements::text-ad');
     }
 
-    /** The creative disk; null uses the media package's disk. */
+    /** The creative disk; not set (null or blank) uses the media package's disk. */
     public static function mediaDisk(): ?string
     {
         return self::optionalString('advertisements.media.disk');
     }
 
     /**
-     * The responsive width ladder in pixels; null leaves the media package's default.
+     * The responsive width ladder in pixels; not set (null or blank) leaves the media package's
+     * default. Each entry must be a width: a null or blank entry inside the list is junk, not a
+     * 1 px width.
      *
      * @return list<int>|null
      */
@@ -83,7 +86,7 @@ final class AdvertisementsConfig
     {
         $widths = config('advertisements.media.responsive_widths');
 
-        if ($widths === null) {
+        if (self::blank($widths)) {
             return null;
         }
 
@@ -94,8 +97,13 @@ final class AdvertisementsConfig
         $clean = [];
 
         foreach ($widths as $index => $width) {
-            $clean[] = Config::for(["advertisements.media.responsive_widths.{$index}" => $width])
-                ->integer("advertisements.media.responsive_widths.{$index}", 1, min: 1);
+            $key = "advertisements.media.responsive_widths.{$index}";
+
+            if (self::blank($width)) {
+                throw InvalidConfigurationException::notAnInteger($key, $width);
+            }
+
+            $clean[] = Config::for([$key => $width])->integer($key, 1, min: 1);
         }
 
         return $clean;
@@ -118,6 +126,12 @@ final class AdvertisementsConfig
 
     private static function optionalString(string $key): ?string
     {
-        return config($key) === null ? null : Config::requireString($key);
+        return self::blank(config($key)) ? null : Config::requireString($key);
+    }
+
+    /** Not set: absent, null or a blank string (`''` or whitespace — a host's `KEY=`). */
+    private static function blank(mixed $value): bool
+    {
+        return $value === null || (is_string($value) && trim($value) === '');
     }
 }
