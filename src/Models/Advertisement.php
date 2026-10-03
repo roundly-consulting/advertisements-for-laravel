@@ -24,6 +24,7 @@ use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\AdvertisementFactory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementEventType;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Advertisements\Support\CategoryResolver;
 use RoundlyConsulting\Advertisements\Support\EventModel;
@@ -387,7 +388,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
      */
     public function scopeTargetedAt(Builder $query, Location|Coordinates|string|null $viewer): void
     {
-        $unknownMatches = config('advertisements.geo.match_when_unknown', 'untargeted_only') === 'all';
+        $unknownMatches = AdvertisementsConfig::matchWhenUnknown() === AdvertisementsConfig::UNKNOWN_ALL;
 
         if ($viewer === null || ! Targeting::canPlace($viewer)) {
             if (! $unknownMatches) {
@@ -517,7 +518,7 @@ class Advertisement extends Model implements HasMedia, Sluggable
                 ->sequentialSuffix(start: 2)
                 ->includeTrashed()
                 ->fallback(LocaleFallback::Any)
-                ->fallbackLocale(fn (): string => (string) config('advertisements.fallback_locale', 'en'))
+                ->fallbackLocale(fn (): string => AdvertisementsConfig::fallbackLocale())
                 ->keepHistory(Config::boolean('advertisements.slugs.history'))
                 ->routeKey(),
         );

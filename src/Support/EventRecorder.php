@@ -38,11 +38,8 @@ final class EventRecorder
             return $this->core->execute($advertisement, $type, $placement, $data);
         }
 
-        /** @var string|null $connection */
-        $connection = config('advertisements.tracking.connection');
-
-        /** @var string|null $queue */
-        $queue = config('advertisements.tracking.queue');
+        $connection = AdvertisementsConfig::trackingConnection();
+        $queue = AdvertisementsConfig::trackingQueue();
 
         Bus::dispatch((new RecordAdvertisementEventJob(
             $advertisement->getKey(),

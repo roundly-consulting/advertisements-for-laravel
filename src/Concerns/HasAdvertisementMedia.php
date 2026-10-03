@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
 use RoundlyConsulting\Advertisements\AdvertisementManager;
 use RoundlyConsulting\Advertisements\Models\Placement;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 use RoundlyConsulting\Advertisements\Support\KeyString;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\Advertisements\Support\PlacementResolver;
@@ -159,17 +160,17 @@ trait HasAdvertisementMedia
 
     public function fallbackCreativeBucket(): string
     {
-        return (string) config('advertisements.media.fallback_bucket', 'creative');
+        return AdvertisementsConfig::fallbackBucket();
     }
 
     public function displayVariant(): string
     {
-        return (string) config('advertisements.media.display_variant', 'display');
+        return AdvertisementsConfig::displayVariant();
     }
 
     private function creativeBucketPrefix(): string
     {
-        return (string) config('advertisements.media.creative_bucket_prefix', 'creative');
+        return AdvertisementsConfig::creativeBucketPrefix();
     }
 
     private function creativeFallbackEnabled(): bool
@@ -199,14 +200,13 @@ trait HasAdvertisementMedia
     {
         $bucket->singleFile()->acceptsMimeTypes(self::CREATIVE_MIME_TYPES);
 
-        $disk = config('advertisements.media.disk');
+        $disk = AdvertisementsConfig::mediaDisk();
 
-        if (is_string($disk) && $disk !== '') {
+        if ($disk !== null) {
             $bucket->useDisk($disk);
         }
 
-        $widths = config('advertisements.media.responsive_widths');
-        $bucket->responsiveWidths(is_array($widths) ? $this->normalizeWidths($widths) : null);
+        $bucket->responsiveWidths(AdvertisementsConfig::responsiveWidths());
 
         $variant = $this->displayVariant();
 
@@ -219,22 +219,5 @@ trait HasAdvertisementMedia
         });
 
         return $bucket;
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $widths
-     * @return list<int>
-     */
-    private function normalizeWidths(array $widths): array
-    {
-        $clean = [];
-
-        foreach ($widths as $width) {
-            if (is_int($width) && $width > 0) {
-                $clean[] = $width;
-            }
-        }
-
-        return $clean;
     }
 }

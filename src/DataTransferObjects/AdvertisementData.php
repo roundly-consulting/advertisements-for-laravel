@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Enums\Omitted;
 use RoundlyConsulting\Advertisements\Models\Category;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Money;
 
@@ -153,9 +154,6 @@ final readonly class AdvertisementData
 
     private static function defaultCurrency(): string
     {
-        /** @var string $default */
-        $default = config('advertisements.default_currency', 'EUR');
-
-        return $default;
+        return AdvertisementsConfig::defaultCurrency();
     }
 }

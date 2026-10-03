@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Advertisements;
 
+use Closure;
 use RoundlyConsulting\Advertisements\Contracts\CreativeRenderer;
 use RoundlyConsulting\Advertisements\Facades\Advertisements;
 use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Advertisements\Support\CreativeResolver;
 use RoundlyConsulting\Advertisements\Support\EventModel;
 use RoundlyConsulting\Advertisements\Support\PlacementModel;
 use RoundlyConsulting\Advertisements\Support\ViewerLocationResolver;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
@@ -69,7 +72,7 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
             'Category model' => class_basename(CategoryModel::class()),
             'Event model' => class_basename(EventModel::class()),
             'Tracking' => $this->tracking(),
-            'Default currency' => (string) config('advertisements.default_currency', 'EUR'),
+            'Default currency' => self::orInvalid(AdvertisementsConfig::defaultCurrency(...)),
             'Creatives' => $this->creatives(),
             'Geo targeting' => $this->geoTargeting(),
             'Geo stamping' => Config::boolean('advertisements.geo.stamp_events', true) ? 'ON' : 'OFF',
@@ -84,11 +87,11 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
             return 'INLINE';
         }
 
-        return sprintf(
+        return self::orInvalid(static fn (): string => sprintf(
             'BUFFERED (connection %s, queue %s)',
-            config('advertisements.tracking.connection') !== null ? 'SET' : 'DEFAULT',
-            config('advertisements.tracking.queue') !== null ? 'SET' : 'DEFAULT',
-        );
+            AdvertisementsConfig::trackingConnection() !== null ? 'SET' : 'DEFAULT',
+            AdvertisementsConfig::trackingQueue() !== null ? 'SET' : 'DEFAULT',
+        ));
     }
 
     /**
@@ -97,14 +100,18 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
      */
     private function creatives(): string
     {
-        $widths = config('advertisements.media.responsive_widths');
+        $fallback = Config::boolean('advertisements.media.use_fallback_bucket', true) ? 'with' : 'no';
 
-        return sprintf(
-            'disk %s, %s fallback bucket, %s responsive widths',
-            config('advertisements.media.disk') !== null ? 'SET' : 'MEDIA DEFAULT',
-            Config::boolean('advertisements.media.use_fallback_bucket', true) ? 'with' : 'no',
-            is_array($widths) ? (string) count($widths) : 'MEDIA DEFAULT',
-        );
+        return self::orInvalid(static function () use ($fallback): string {
+            $widths = AdvertisementsConfig::responsiveWidths();
+
+            return sprintf(
+                'disk %s, %s fallback bucket, %s responsive widths',
+                AdvertisementsConfig::mediaDisk() !== null ? 'SET' : 'MEDIA DEFAULT',
+                $fallback,
+                $widths === null ? 'MEDIA DEFAULT' : (string) count($widths),
+            );
+        });
     }
 
     private function geoTargeting(): string
@@ -113,10 +120,27 @@ final class AdvertisementsServiceProvider extends PackageServiceProvider
             return 'OFF';
         }
 
+        $untargeted = Config::boolean('advertisements.geo.untargeted_match', true) ? 'match' : 'excluded';
+
         return sprintf(
             'ON (untargeted ads %s, unknown viewer sees %s)',
-            Config::boolean('advertisements.geo.untargeted_match', true) ? 'match' : 'excluded',
-            config('advertisements.geo.match_when_unknown') === 'all' ? 'all' : 'untargeted only',
+            $untargeted,
+            self::orInvalid(static fn (): string => AdvertisementsConfig::matchWhenUnknown() === AdvertisementsConfig::UNKNOWN_ALL ? 'all' : 'untargeted only'),
         );
+    }
+
+    /**
+     * A strict read for an `about` row: a broken value renders as INVALID rather than as
+     * the default it no longer falls back to, and `about` keeps working.
+     *
+     * @param  Closure(): string  $read
+     */
+    private static function orInvalid(Closure $read): string
+    {
+        try {
+            return $read();
+        } catch (InvalidConfigurationException) {
+            return 'INVALID';
+        }
     }
 }

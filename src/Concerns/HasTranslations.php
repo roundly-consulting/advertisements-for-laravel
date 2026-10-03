@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Advertisements\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 
 /**
  * Native, dependency-free translatable attributes.
@@ -183,9 +184,6 @@ trait HasTranslations
 
     protected function fallbackLocale(): ?string
     {
-        /** @var string|null $fallback */
-        $fallback = config('advertisements.fallback_locale');
-
-        return $fallback;
+        return AdvertisementsConfig::optionalFallbackLocale();
     }
 }

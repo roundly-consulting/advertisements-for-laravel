@@ -39,6 +39,18 @@ it('ships exactly the config keys it reads', function (): void {
             // morph column type, but not a `config(` token, so the exact key prefix is
             // what makes it visible.
             'advertisements.key_type',
+            // Read through Support\AdvertisementsConfig's strict readers (oneOf, a non-blank
+            // string, an optional string), each naming its key as a literal argument.
+            'advertisements.default_currency',
+            'advertisements.fallback_locale',
+            'advertisements.geo.match_when_unknown',
+            'advertisements.media.creative_bucket_prefix',
+            'advertisements.media.disk',
+            'advertisements.media.display_variant',
+            'advertisements.media.fallback_bucket',
+            'advertisements.media.text_ad_view',
+            'advertisements.tracking.connection',
+            'advertisements.tracking.queue',
         ],
 
         // Deliberately NO `excludeFromReverse` for the provider. The testing README's own

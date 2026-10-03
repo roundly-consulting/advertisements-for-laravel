@@ -15,6 +15,7 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Advertisements\Concerns\HasTranslations;
 use RoundlyConsulting\Advertisements\Database\Factories\CategoryFactory;
 use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
+use RoundlyConsulting\Advertisements\Support\AdvertisementsConfig;
 use RoundlyConsulting\Advertisements\Support\CategoryModel;
 use RoundlyConsulting\Sluggable\Concerns\HasSlug;
 use RoundlyConsulting\Sluggable\Contracts\Sluggable;
@@ -106,7 +107,7 @@ class Category extends Model implements Sluggable
         return SlugOptions::make(
             SlugDefinition::for('slug')
                 ->from('name')
-                ->sourceLocale((string) config('advertisements.fallback_locale', 'en'))
+                ->sourceLocale(AdvertisementsConfig::fallbackLocale())
                 ->storage(SlugStorage::String)
                 ->immutable()
                 ->manual(ManualSlugPolicy::Strict)

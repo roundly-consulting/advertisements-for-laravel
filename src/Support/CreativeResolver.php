@@ -72,7 +72,7 @@ final class CreativeResolver implements CreativeRenderer
 
     private function textAdView(): string
     {
-        return (string) config('advertisements.media.text_ad_view', 'advertisements::text-ad');
+        return AdvertisementsConfig::textAdView();
     }
 
     /**
