@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use RoundlyConsulting\PackageToolkit\Enums\DatabaseDriver;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\Testing\Database\DriverMatrix;
 
 function dropAdvertisementsTable(): void
@@ -94,13 +94,14 @@ it('renders each configured key type as a distinct real column type', function (
     'ulid' => ['ulid', 'character(26)'],
 ])->skip($pgsqlOnly, 'needs the postgres catalog to tell the key types apart');
 
-it('falls back to the bigint schema for an unrecognized key type', function (): void {
+it('refuses to migrate on an unrecognized key type instead of falling back to bigint', function (): void {
     config()->set('advertisements.key_type', 'nonsense');
 
     dropAdvertisementsTable();
-    runAdvertisementsMigration();
 
-    expect(Schema::hasColumn('advertisements', 'author_id'))->toBeTrue()
-        ->and(DatabaseDriver::current()->isPgsql() ? advertisementsPgColumn('advertisements', 'author_id')['type'] : 'bigint')
-        ->toBe('bigint');
+    // A typo in a host's config must stop the migration, never silently build bigint
+    // columns for a uuid/ulid-keyed host.
+    expect(function (): void {
+        runAdvertisementsMigration();
+    })->toThrow(InvalidConfigurationException::class, 'Configuration value [advertisements.key_type] must be one of [bigint, uuid, ulid] (case-insensitive), [nonsense] given.');
 });
