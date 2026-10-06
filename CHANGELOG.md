@@ -6,10 +6,15 @@ All notable changes to `advertisements-for-laravel` are documented in this file.
 
 ## Unreleased
 
+## 1.1.0 - 2026-10-06
+
 ### Changed
 
 - Requires `roundly-consulting/geolocation-for-laravel` `^2.0`. If your app uses geolocation's
   Google distances, enable the Routes API on the key in `GOOGLE_MAPS_API_KEY` before you upgrade.
+- Maintenance: `composer.json` `homepage` and `support.docs` now point to the documentation site.
+- Documentation: the README hero image uses an absolute URL, so it renders on Packagist and other
+  sites.
 
 ## 1.0.0 - 2026-10-03
 
