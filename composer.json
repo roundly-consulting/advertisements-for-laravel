@@ -23,7 +23,7 @@
         "ext-bcmath": "*",
         "illuminate/contracts": "^12.0|^13.0",
         "roundly-consulting/enums-for-laravel": "^1.0",
-        "roundly-consulting/geolocation-for-laravel": "^1.0",
+        "roundly-consulting/geolocation-for-laravel": "^2.0",
         "roundly-consulting/media-library-for-laravel": "^1.0",
         "roundly-consulting/money-for-laravel": "^1.0",
         "roundly-consulting/package-toolkit-for-laravel": "^1.0",
