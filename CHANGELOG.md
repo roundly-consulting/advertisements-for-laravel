@@ -6,6 +6,8 @@ All notable changes to `advertisements-for-laravel` are documented in this file.
 
 ## Unreleased
 
+## 1.1.1 - 2026-10-11
+
 ### Changed
 
 - Maintenance: requires the latest roundly packages — enums `^1.1.0`, geolocation `^2.0.3`,
