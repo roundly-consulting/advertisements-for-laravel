@@ -6,6 +6,12 @@ All notable changes to `advertisements-for-laravel` are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Maintenance: requires the latest roundly packages — enums `^1.1.0`, geolocation `^2.0.3`,
+  media-library `^1.1.2`, money `^1.0.1`, package-toolkit `^1.3.0`, sluggable `^1.1.1`;
+  dev: testing `^1.2.1`.
+
 ## 1.1.0 - 2026-10-06
 
 ### Changed
