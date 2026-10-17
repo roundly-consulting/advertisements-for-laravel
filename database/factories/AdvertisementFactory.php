@@ -7,12 +7,25 @@ namespace RoundlyConsulting\Advertisements\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use RoundlyConsulting\Advertisements\Enums\AdvertisementStatus;
 use RoundlyConsulting\Advertisements\Models\Advertisement;
+use RoundlyConsulting\Advertisements\Support\AdvertisementModel;
 use RoundlyConsulting\Money\Money;
 
 /** @extends Factory<Advertisement> */
 final class AdvertisementFactory extends Factory
 {
     protected $model = Advertisement::class;
+
+    /**
+     * Build the configured model, not the packaged one: a host that swaps
+     * `advertisements.model` gets its own class, with its casts,
+     * events and observers.
+     *
+     * @return class-string<Advertisement>
+     */
+    public function modelName(): string
+    {
+        return AdvertisementModel::class();
+    }
 
     /** @return array<string, mixed> */
     public function definition(): array
