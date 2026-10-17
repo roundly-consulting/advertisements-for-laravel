@@ -14,6 +14,8 @@ use RoundlyConsulting\Testing\PackageTestCase;
 
 abstract class TestCase extends PackageTestCase
 {
+    private static ?string $appKey = null;
+
     /**
      * Every provider advertisements hard-requires, in registration order. A host
      * auto-discovers these; the suite must list them or the test environment is a fiction.
@@ -56,13 +58,24 @@ abstract class TestCase extends PackageTestCase
     }
 
     /**
+     * Migrate once per worker and schema signature; each test still starts on empty tables
+     * with the key counters where a fresh migrate leaves them.
+     */
+    protected function keepsMigratedSchema(): bool
+    {
+        return true;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function configBeforeBoot(): array
     {
         return [
-            // The route-binding tests sign URLs, which needs a real app key.
-            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            // The route-binding tests sign URLs, which needs a real app key. One per process:
+            // the kept schema's signature holds the whole config, so a key per test would
+            // migrate every test afresh.
+            'app.key' => self::$appKey ??= 'base64:'.base64_encode(random_bytes(32)),
 
             // Media-library: store on a fakeable public disk, use the GD driver, and keep the
             // responsive ladder small so creative variant generation stays fast under test.
