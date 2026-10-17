@@ -107,6 +107,14 @@ ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Advertisements');
  */
 
 /**
+ * The factory half of the seam, adopted on its own: unlike `modelsResolveThroughSeam` above it
+ * has no file-level late-static-binding ban, so nothing here forces a rejection. Every factory
+ * of the four swappable models builds the configured class, so a host that swapped
+ * `advertisements.model` gets its own rows (and observers) out of `Advertisement::factory()`.
+ */
+ArchPresets::factoriesResolveThroughSeam(__DIR__.'/../database/factories', __DIR__.'/../src');
+
+/**
  * The Dependency Policy as a test. No `alsoAllow`: advertisements' `require` ships only
  * php/ext-bcmath/illuminate/roundly, and the workflow installs test tooling with `--dev`. If it goes red
  * the graph is wrong — never widen the allow-list to quiet it.
